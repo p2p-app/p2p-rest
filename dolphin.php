@@ -54,7 +54,18 @@ class Dolphin {
             $newColumns = '';
             foreach ($data as $attribute => $value) {
                 $attribute = $db->real_escape_string($attribute);
-                $data[$attribute] = $db->real_escape_string($value);
+                $type = 'varchar(255)';
+                if (is_array($value)) {
+                    if (!isset($value['type']))
+                        return $this->fail('Invalid value type format');
+                    else $type = $value['type'];
+                    if (!isset($value['val']))
+                        return $this->fail('Invalid value val format');
+                    else $value = $db->real_escape_string($value['val']);
+                }
+                if (is_string($value))
+                    $data[$attribute] = $db->real_escape_string($value);
+                else return $this->fail('Invalid value format');
                 if (!$sql = $db->prepare("SHOW COLUMNS FROM `$table` LIKE '$attribute'"))
                     return $this->fail("Could not prepare statement [$db->error]");
                 if (!$sql->execute())
@@ -63,7 +74,7 @@ class Dolphin {
                 $num_rows = $result->num_rows;
                 $result->free();
                 // prepare to add column if not exists
-                if ($num_rows <= 0) $newColumns .= "ADD $attribute varchar(255), ";
+                if ($num_rows <= 0) $newColumns .= "ADD $attribute $type, ";
                 // prepare update attributes to use later
                 $updates .= ",$attribute=?";
             }
