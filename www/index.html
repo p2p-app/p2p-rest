@@ -16,6 +16,7 @@
                 padding: 4px;
                 font-size: 18px;
                 outline: none;
+                text-align: center;
             }
             #form button {
                 margin: 5px;
@@ -54,15 +55,13 @@
             var api = 'api';
             $(document).ready(function () {
                 var update = function (url, method, code, data) {
-                    var element = document.createElement('div');
-                    // try {
-                    //     var newdata = JSON.parse(data);
-                    //     // element.innerHTML = JSON.stringify(newdata, null, 3).replace(/\n/g, '<br/>');
-                    //     element.innerHTML = newdata;
-                    //     // element.innerHTML = data;
-                    // } catch (e) {
-                    //     element.innerHTML = data;
-                    // }
+                    var element = document.createElement('pre');
+                    try {
+                        var newdata = JSON.parse(data);
+                        element.innerHTML = JSON.stringify(newdata, null, 3);
+                    } catch (e) {
+                        element.innerHTML = data;
+                    }
                     element.innerHTML = data;
                     $('#output').html(
                         'URL: ' + url + '<br/>' +
@@ -71,32 +70,30 @@
                         '<br/>'
                     )[0].appendChild(element);
                 };
-                $('#get').click(function () {
-                    var getURL = api + $('#endpoint')[0].value + (($('#query')[0].value != '') ? '/?' + $('#query')[0].value : '')
+                var ajax = function (url, method) {
+                    method = method.toUpperCase();
                     $.ajax({
-                        url: getURL,
-                        method: 'GET',
-                        success: function (data) {
-                            update(getURL, 'GET', 'OK [200]', data);
+                        url: url,
+                        method: method,
+                        data: (method == 'POST' ? $('#query')[0].value : null),
+                        headers: ($('#auth')[0].value == '' ? null : {
+                            'Authorization': $('#auth')[0].value
+                        }),
+                        success: function (data, status, xhr) {
+                            update(url, method, xhr.statusText + ' [' + xhr.status + ']', xhr.responseText);
                         },
-                        error: function (xhr) {
-                            update(getURL, 'GET', xhr.statusText + ' [' + xhr.status + ']', xhr.responseText);
+                        error: function (xhr, status, error) {
+                            update(url, method, xhr.statusText + ' [' + xhr.status + ']', xhr.responseText);
                         }
                     });
+                };
+                $('#get').click(function () {
+                    var getURL = api + $('#endpoint')[0].value + '/?format=json_pretty' + (($('#query')[0].value != '') ? '&' + $('#query')[0].value : '')
+                    ajax(getURL, 'get')
                 });
                 $('#post').click(function () {
-                    var getURL = api + $('#endpoint')[0].value;
-                    $.ajax({
-                        url: getURL,
-                        method: 'POST',
-                        data: $('#query')[0].value,
-                        success: function (data) {
-                            update(getURL, 'POST', 'OK [200]', data);
-                        },
-                        error: function (xhr) {
-                            update(getURL, 'POST', xhr.statusText + ' [' + xhr.status + ']', xhr.responseText);
-                        }
-                    });
+                    var postURL = api + $('#endpoint')[0].value + '/?format=json_pretty';
+                    ajax(postURL, 'post');
                 });
             });
         </script>
@@ -107,6 +104,7 @@
             <h1>P2P API Test</h1>
             <input placeholder = 'endpoint' type = 'text' id = 'endpoint'/>
             <input placeholder = 'query' type = 'text' id = 'query'/>
+            <input placeholder = 'authorization' type = 'text' id = 'auth'/>
             <button id = 'get'>GET</button><button id = 'post'>POST</button>
             <br/><br/>
             <div id = 'output'>

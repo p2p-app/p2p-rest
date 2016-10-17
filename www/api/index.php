@@ -7,11 +7,13 @@ require($reqpath . 'dolphin.php');
 require($reqpath . 'vendor/autoload.php');
 use Namshi\JOSE\SimpleJWS;
 
-// get request data
+// get and correct request data
 $request_uri = $_SERVER['REQUEST_URI'];
+if (strpos($request_uri, '?') !== false)
+    $request_uri = substr($request_uri, 0, strpos($request_uri, '?'));
 $request_uri_last = substr($request_uri, strlen($request_uri) - 1);
 if ($request_uri_last == '?' || $request_uri_last == '#' || $request_uri_last == '/')
-    $request_uri = substr($_SERVER['REQUEST_URI'], 0, strlen($_SERVER['REQUEST_URI']) - 1);
+    $request_uri = substr($request_uri, 0, strlen($request_uri) - 1);
 $endpoint = explode('/', $request_uri);
 $method = strtolower($_SERVER['REQUEST_METHOD']);
 
@@ -26,57 +28,6 @@ if ($endpoint[0] == 'www')
     $endpoint = array_slice($endpoint, 1);
 if ($endpoint[0] == 'api')
     $endpoint = array_slice($endpoint, 1);
-
-// function for responding to/closing request
-function emit($code, $data) {
-    global $endpoint;
-    if ($code !== true && is_int($code)) {
-        $data['url'] = implode('/', $endpoint);
-        http_response_code($code);
-    }
-    $response = json_encode($data);
-    echo $response;
-    die();
-}
-
-// function for custom hashing data
-function hash2($raw) {
-    $hash = md5(hash('sha256', $raw));
-    return $hash;
-}
-
-// function for validating/verifying JWT token and extracting payload
-function decodeToken($token) {
-    global $salt;
-    try {
-        $jws = SimpleJWS::load($token);
-    } catch (InvalidArgumentException $e) {
-        return false;
-    } catch (Exception $e) {
-        return false;
-    }
-    if ($jws->isValid($salt, 'HS256'))
-        $payload = $jws->getPayload();
-    if (isset($payload['id']) && isset($payload['username']))
-        return [
-            'id' => $payload['id'],
-            'username' => $payload['username']
-        ];
-    return false;
-}
-
-// function for creating JWT token with user ID and username as payload
-function createToken($id, $username) {
-    global $salt;
-    $jws  = new SimpleJWS(['alg' => 'HS256']);
-    $jws->setPayload([
-        'iat' => time(),
-        'id' => $id,
-        'username' => $username
-    ]);
-    $jws->sign($salt);
-    return $jws->getTokenString();
-}
 
 // connect to MySQL database with Dolphin
 $db = new Dolphin($credentials);
@@ -154,6 +105,9 @@ elseif ($endpoint[0] == 'students') {
         $exists = $db->get('students', [ 'username' => $username ], [ 'id' ]);
         if ($exists != false && $exists != null)
             emit(500, [ 'message' => 'Username Not Available']);
+        $exists = $db->get('tutors', [ 'username' => $username ], [ 'id' ]);
+        if ($exists != false && $exists != null)
+            emit(500, [ 'message' => 'Username Not Available']);
         // push user to students table
         $id = $db->push('students', [
             'username' => $username,
@@ -173,6 +127,9 @@ elseif ($endpoint[0] == 'students') {
             ]
         ]);
     } else {
+        // authorize
+        auth();
+
         // only allow gets
         if ($method != 'get')
             emit(405, [ 'message' => 'Please use `api/students/{{id}}` with GET' ]);
@@ -230,6 +187,9 @@ elseif($endpoint[0] == 'tutors') {
         // add user to database
         $password = hash2($password);
         // check if username taken
+        $exists = $db->get('students', [ 'username' => $username ], [ 'id' ]);
+        if ($exists != false && $exists != null)
+            emit(500, [ 'message' => 'Username Not Available']);
         $exists = $db->get('tutors', [ 'username' => $username ], [ 'id' ]);
         if ($exists != false && $exists != null)
             emit(500, [ 'message' => 'Username Not Available']);
@@ -266,6 +226,9 @@ elseif($endpoint[0] == 'tutors') {
             ]
         ]);
     } else {
+        // authorize
+        auth();
+
         // only allow gets
         if ($method != 'get')
             emit(405, [ 'message' => 'Please use `api/tutors/{{id}}` with GET' ]);
@@ -293,5 +256,97 @@ elseif($endpoint[0] == 'tutors') {
 }
 // invalid endpoint - respond with 404 error
 else emit(404, [ 'message' => 'Server endpoint not found' ]);
+
+
+// declare convenience functions
+
+// function for responding to/closing request
+function emit($code, $data) {
+    global $endpoint;
+    if ($code !== true && is_int($code)) {
+        $data['uri'] = implode('/', $endpoint);
+        http_response_code($code);
+    }
+    header('Content-Type: application/json', true);
+    if (@$_GET['format'] == 'json_pretty')
+        $response = json_encode($data, JSON_PRETTY_PRINT);
+    else $response = json_encode($data);
+    echo $response;
+    die();
+}
+
+// function for custom hashing data
+function hash2($raw) {
+    $hash = md5(hash('sha256', $raw));
+    return $hash;
+}
+
+// function for validating/verifying JWT token and extracting payload
+function decodeToken($token) {
+    global $salt;
+    try {
+        $jws = SimpleJWS::load($token);
+    } catch (InvalidArgumentException $e) {
+        return false;
+    } catch (Exception $e) {
+        return false;
+    }
+    if ($jws->isValid($salt, 'HS256'))
+        $payload = $jws->getPayload();
+    else return false;
+    if (isset($payload['id']) && isset($payload['username']))
+        return [
+            'id' => $payload['id'],
+            'username' => $payload['username']
+        ];
+    else return false;
+}
+
+// function for creating JWT token with user ID and username as payload
+function createToken($id, $username) {
+    global $salt;
+    $jws  = new SimpleJWS(['alg' => 'HS256']);
+    $jws->setPayload([
+        'iat' => time(),
+        'id' => $id,
+        'username' => $username
+    ]);
+    $jws->sign($salt);
+    return $jws->getTokenString();
+}
+
+// function for authenticating tokens
+function auth() {
+    global $db;
+    // get token from header
+    $token = @$_SERVER['HTTP_AUTHORIZATION'];
+    if (!isset($token) || !is_string($token))
+        emit(401, [ 'message' => 'Invalid Authorization Header' ]);
+    // remove non-token data
+    if (substr($token, 0, 8) == 'Bearer: ' || substr($token, 0, 8) == 'Base64: ')
+        $token = substr($token, 8);
+    elseif (substr($token, 0, 7) == 'Basic: ' || substr($token, 0, 7) == 'Bearer ' || substr($token, 0, 7) == 'Base64 ')
+        $token = substr($token, 7);
+    elseif (substr($token, 0, 6) == 'Basic ')
+        $token = substr($token, 6);
+    // validate/verify token
+    $payload = decodeToken($token);
+    if ($payload === false || $payload == null)
+        emit(401, [ 'message' => 'Invalid Authorization Token' ]);
+    // check if username and id form payload match database
+    $validStudent = $db->get('students', [
+        'id' => $payload['id'],
+        'username' => $payload['username']
+    ], [ 'id' ]);
+    if ($validStudent === false) {
+        $validTutor = $db->get('tutors', [
+            'id' => $payload['id'],
+            'username' => $payload['username']
+        ], [ 'id' ]);
+        if ($validTutor === false)
+            emit(401, [ 'message' => 'Invalid username/id in Authorization Token' ]);
+    }
+    return true;
+}
 
 ?>
