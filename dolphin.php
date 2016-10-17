@@ -186,9 +186,12 @@ class Dolphin {
             $result = $sql->get_result();
             $num_rows = $result->num_rows;
             if ($num_rows > 0) {
-                while (($row = $result->fetch_assoc()) !== null) {
-                    if ($child === true) array_push($response, $row);
-                    else array_push($response, $row['id']);
+                if ($child === true) {
+                    while (($row = $result->fetch_assoc()) !== null)
+                        array_push($response, $row);
+                } else {
+                    while (($row = $result->fetch_assoc()) !== null)
+                        array_push($response, $row['id']);
                 }
             }
             $result->free();
@@ -210,9 +213,12 @@ class Dolphin {
                 if ($nullData) $response = $result->fetch_assoc();
                 elseif (count($data) == 1) $response = $result->fetch_assoc()[$data[0]];
             } else {
-                while (($row = $result->fetch_assoc()) !== null) {
-                    if ($nullData) array_push($response, $row);
-                    elseif (count($data) == 1) array_push($response, $row[$data[0]]);
+                if (!$nullData && count($data) == 1) {
+                    while (($row = $result->fetch_assoc()) !== null)
+                        array_push($response, $row[$data[0]]);
+                } else {
+                    while (($row = $result->fetch_assoc()) !== null)
+                        array_push($response, $row);
                 }
             }
             $result->free();
@@ -245,9 +251,12 @@ class Dolphin {
                 if (!$nullData && count($data) == 1) $response = $result->fetch_assoc()[$data[0]];
                 else $response = $result->fetch_assoc();
             } else {
-                while (($row = $result->fetch_assoc()) !== null) {
-                    if ($nullData) array_push($response, $row);
-                    elseif (count($data) == 1) array_push($response, $row[$data[0]]);
+                if (!$nullData && count($data) == 1) {
+                    while (($row = $result->fetch_assoc()) !== null)
+                        array_push($response, $row[$data[0]]);
+                } else {
+                    while (($row = $result->fetch_assoc()) !== null)
+                        array_push($response, $row);
                 }
             }
             $result->free();
