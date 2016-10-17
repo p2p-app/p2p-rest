@@ -137,7 +137,9 @@ class Dolphin {
                 if ($num_rows <= 0) break;
             }
         } else $id = $this->id();
-        $this->set($table, $id, $data);
+        if ($this->set($table, $id, $data) === true)
+            return $id;
+        else return false;
     }
 
     // method for getting values from keys
@@ -240,8 +242,8 @@ class Dolphin {
             $result = $sql->get_result();
             $num_rows = $result->num_rows;
             if ($num_rows == 1) {
-                if ($nullData) $response = $result->fetch_assoc();
-                elseif (count($data) == 1) $response = $result->fetch_assoc()[$data[0]];
+                if (!$nullData && count($data) == 1) $response = $result->fetch_assoc()[$data[0]];
+                else $response = $result->fetch_assoc();
             } else {
                 while (($row = $result->fetch_assoc()) !== null) {
                     if ($nullData) array_push($response, $row);
@@ -258,7 +260,7 @@ class Dolphin {
     }
 
     // method for getting logged errors
-    public function error($num) {
+    public function error($num = 0) {
         $numErrors = count($this->errors);
         if ($num === true) return $numErrors;
         elseif ($num < 0 || $num >= $numErrors)
