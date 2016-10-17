@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>P2P Test</title>
+        <style type = 'text/css'>
+            * {
+                font-family: Helvetica;
+            }
+            #form {
+                width: 100%;
+                text-align: center;
+            }
+            #form input {
+                display: block;
+                margin: 2px auto;
+                padding: 4px;
+                font-size: 18px;
+                outline: none;
+            }
+            #form button {
+                margin: 5px;
+                display: inline-block;
+                padding: 10px;
+                font-size: 17px;
+                border-radius: 4px;
+                outline: none;
+                width: 90px;
+                background-color: #F6F6F6;
+                transition: background-color 0.2s ease;
+                border: 1px solid #CCC;
+            }
+            #form button:hover {
+                background-color: #ECECEC;
+            }
+            #form #output {
+                margin: 0 auto;
+                width: 600px;
+                font: 20px "Courier New", Courier;
+                text-align: left;
+            }
+            #form #output * {
+                font: 20px "Courier New", Courier;
+            }
+        </style>
+        <script src = 'http://code.jquery.com/jquery-3.1.1.min.js' integrity = 'sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=' crossorigin = 'anonymous'></script>
+        <script type = 'text/javascript'>
+            var api = 'api';
+            $(document).ready(function () {
+                var update = function (url, method, code, data) {
+                    var element = document.createElement('div');
+                    try {
+                        var newdata = JSON.parse(data);
+                        element.innerHTML = JSON.stringify(newdata, null, 3).replace(/\n/g, '<br/>');
+                        element.innerHTML = newdata;
+                    } catch (e) {
+                        element.innerHTML = data;
+                    }
+                    $('#output').html(
+                        'URL: ' + url + '<br/>' +
+                        'Method: ' + method + '<br/>' +
+                        'Status: ' + code + '<br/>' +
+                        '<br/>'
+                    )[0].appendChild(element);
+                };
+                $('#get').click(function () {
+                    var getURL = api + $('#endpoint')[0].value + '/?' + $('#query')[0].value
+                    $.ajax({
+                        url: getURL,
+                        method: 'GET',
+                        success: function (data) {
+                            update(getURL, 'GET', 'OK [200]', data);
+                        },
+                        error: function (xhr) {
+                            update(getURL, 'GET', xhr.statusText + ' [' + xhr.status + ']', xhr.responseText);
+                        }
+                    });
+                });
+                $('#post').click(function () {
+                    var getURL = api + $('#endpoint')[0].value + '/?'
+                    $.ajax({
+                        url: getURL,
+                        method: 'POST',
+                        data: $('#query')[0].value,
+                        success: function (data) {
+                            update(getURL, 'POST', 'OK [200]', data);
+                        },
+                        error: function (xhr) {
+                            update(getURL, 'POST', xhr.statusText + ' [' + xhr.status + ']', xhr.responseText);
+                        }
+                    });
+                });
+            });
+        </script>
+    </head>
+    <body>
+        <br/>
+        <div id = 'form'>
+            <h1>P2P Test</h1>
+            <input placeholder = 'endpoint' type = 'text' id = 'endpoint'/>
+            <input placeholder = 'query' type = 'text' id = 'query'/>
+            <button id = 'get'>GET</button><button id = 'post'>POST</button>
+            <br/><br/>
+            <div id = 'output'>
+                <div style = 'width: 100%; text-align: center;'>output</div>
+            </div>
+        </div>
+    </body>
+</html>

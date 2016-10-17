@@ -1,0 +1,7 @@
+{
+    "name": "p2p/p2p",
+    "type": "project",
+    "require": {
+        "namshi/jose": "^7.2"
+    }
+}
