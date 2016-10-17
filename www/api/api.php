@@ -20,16 +20,17 @@ if ($endpoint[0] == 'www')
 if ($endpoint[0] == 'api')
     $endpoint = array_slice($endpoint, 1);
 
-function emit($success, $data) {
+function emit($code, $data) {
     $response = json_encode($data);
-    if ($success == false) http_response_code(500);
-    elseif ($success == '404') http_response_code(404);
+    if ($code !== true && is_int($code))
+        http_response_code($code);
     echo json_encode($response);
     die();
 }
 
 function hash2($raw) {
-    return md5(hash('sha256', $raw));
+    $hash = md5(hash('sha256', $raw));
+    return $hash;
 }
 
 function decodeToken($token) {
@@ -62,36 +63,74 @@ $db = new Dolphin($credentials);
 $db->connect();
 
 if ($endpoint[0] == 'login') {
-    if ($method != 'post') emit(false, [ 'message' => 'Please use "api/login" with POST' ]);
+    // only allow posts
+    if ($method != 'post')
+        emit(405, [ 'message' => 'Please use "api/login" with POST' ]);
+
     // function to run on success
-    $succeed = function ($id, $username) {
+    $succeed = function ($id, $username, $fullname) {
         emit(true, [
             'token' => createToken($id, $username),
             'id' => $id,
-            'username' => $username
+            'username' => $username,
+            'fullname' => $fullname
         ]);
     };
 
     // check username and password validity
     $username = @$_POST['username'];
     if (!isset($username) || !is_string($username) || !ctype_alnum($username))
-        emit(false, [ 'message' => 'Invalid Username']);
+        emit(500, [ 'message' => 'Invalid Username']);
     $password = @$_POST['password'];
     if (!isset($password) || !is_string($password) || !ctype_alnum($password))
-    emit(false, [ 'message' => 'Invalid Password']);
+        emit(500, [ 'message' => 'Invalid Password']);
 
     // check username and password against database
     $password = hash2($password);
     // check students table and succeed
-    $user = $db->get('students', [ 'username' => $username, 'password' => $password ]);
-    if ($user != false) $succeed($user['id'], $user['username']);
+    $user = $db->get('students', [ 'username' => $username, 'password' => $password ], [ 'id', 'username', 'fullname' ]);
+    if ($user != false) $succeed($user['id'], $user['username'], $user['fullname']);
     // check tutors table and succeed
-    else $user = $db->get('tutors', [ 'username' => $username, 'password' => $password ]);
-    if ($user != false) $succeed($user['id'], $user['username']);
+    else $user = $db->get('tutors', [ 'username' => $username, 'password' => $password ], [ 'id', 'username', 'fullname' ]);
+    if ($user != false) $succeed($user['id'], $user['username'], $user['fullname']);
     // fail if username or password not found in either table
-    else emit(false, [ 'message' => 'Username/password not found' ]);
+    else emit(500, [ 'message' => 'Username/password not found' ]);
 } elseif ($endpoint[0] == 'create') {
+    // only allow posts
+    if ($method != 'post')
+        emit(405, [ 'message' => 'Please use "api/create" with POST' ]);
 
-} else emit('404', [ 'message' => 'Server endpoint not found' ]);
+    // function to run on success
+    $succeed = function ($id, $username, $fullname) {
+        emit(true, [
+            'token' => createToken($id, $username),
+            'id' => $id,
+            'username' => $username,
+            'fullname' => $fullname
+        ]);
+    };
+
+    // check username and password validity
+    $username = @$_POST['username'];
+    if (!isset($username) || !is_string($username) || !ctype_alnum($username))
+        emit(500, [ 'message' => 'Invalid Username']);
+    $password = @$_POST['password'];
+    if (!isset($password) || !is_string($password) || !ctype_alnum($password))
+        emit(500, [ 'message' => 'Invalid Password']);
+    $fullname = @$_POST['fullname'];
+    if (!isset($fullname) || !is_string($fullname) /*|| !ctype_alnum($password)*/)
+        emit(500, [ 'message' => 'Invalid Full Name']);
+
+    // add user to database
+    $password = hash2($password);
+    $id = $db->push('students', [
+        'username' => $username,
+        'password' => $password,
+        'fullname' => $fullname
+    ]);
+    if ($id === false)
+        emit(500, [ 'message' => 'Could not push to database: ' . $db->error() ]);
+    else $succeed($id, $username, $fullname);
+} else emit(404, [ 'message' => 'Server endpoint not found' ]);
 
 ?>
