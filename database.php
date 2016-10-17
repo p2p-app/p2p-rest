@@ -1,12 +1,12 @@
 <?php
 
 $credentials = [
-    'host' => '10.0.1.78',
+    'host' => '127.0.0.1',
     'user' => 'p2p',
-    'pass' => 'zNX3byJD2HGv2hVM',
+    'pass' => 'pass',
     'name' => 'p2p'
 ];
 
-$salt = 'jeanghantous';
+$salt = 'salt';
 
 ?>
