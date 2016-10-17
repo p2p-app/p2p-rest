@@ -55,13 +55,15 @@
             $(document).ready(function () {
                 var update = function (url, method, code, data) {
                     var element = document.createElement('div');
-                    try {
-                        var newdata = JSON.parse(data);
-                        element.innerHTML = JSON.stringify(newdata, null, 3).replace(/\n/g, '<br/>');
-                        element.innerHTML = newdata;
-                    } catch (e) {
-                        element.innerHTML = data;
-                    }
+                    // try {
+                    //     var newdata = JSON.parse(data);
+                    //     // element.innerHTML = JSON.stringify(newdata, null, 3).replace(/\n/g, '<br/>');
+                    //     element.innerHTML = newdata;
+                    //     // element.innerHTML = data;
+                    // } catch (e) {
+                    //     element.innerHTML = data;
+                    // }
+                    element.innerHTML = data;
                     $('#output').html(
                         'URL: ' + url + '<br/>' +
                         'Method: ' + method + '<br/>' +

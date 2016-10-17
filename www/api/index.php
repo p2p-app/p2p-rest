@@ -35,7 +35,7 @@ function emit($code, $data) {
         http_response_code($code);
     }
     $response = json_encode($data);
-    echo json_encode($response);
+    echo $response;
     die();
 }
 
