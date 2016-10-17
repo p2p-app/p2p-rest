@@ -46,6 +46,7 @@
                 padding: 10px;
                 border-radius: 5px;
                 background-color: #F7F7F7;
+                margin: 5px;
             }
         </style>
         <script src = 'http://code.jquery.com/jquery-3.1.1.min.js' integrity = 'sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=' crossorigin = 'anonymous'></script>
@@ -69,7 +70,7 @@
                     )[0].appendChild(element);
                 };
                 $('#get').click(function () {
-                    var getURL = api + $('#endpoint')[0].value + '/?' + $('#query')[0].value
+                    var getURL = api + $('#endpoint')[0].value + (($('#query')[0].value != '') ? '/?' + $('#query')[0].value : '')
                     $.ajax({
                         url: getURL,
                         method: 'GET',
@@ -82,7 +83,7 @@
                     });
                 });
                 $('#post').click(function () {
-                    var getURL = api + $('#endpoint')[0].value + '/?'
+                    var getURL = api + $('#endpoint')[0].value;
                     $.ajax({
                         url: getURL,
                         method: 'POST',
