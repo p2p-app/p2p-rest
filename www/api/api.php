@@ -81,6 +81,7 @@ if ($endpoint[0] == 'login') {
     $username = @$_POST['username'];
     if (!isset($username) || !is_string($username) || !ctype_alnum($username))
         emit(500, [ 'message' => 'Invalid Username']);
+    $username = strtolower($username);
     $password = @$_POST['password'];
     if (!isset($password) || !is_string($password) || !ctype_alnum($password))
         emit(500, [ 'message' => 'Invalid Password']);
@@ -114,6 +115,7 @@ if ($endpoint[0] == 'login') {
     $username = @$_POST['username'];
     if (!isset($username) || !is_string($username) || !ctype_alnum($username))
         emit(500, [ 'message' => 'Invalid Username']);
+    $username = strtolower($username);
     $password = @$_POST['password'];
     if (!isset($password) || !is_string($password) || !ctype_alnum($password))
         emit(500, [ 'message' => 'Invalid Password']);
@@ -123,13 +125,20 @@ if ($endpoint[0] == 'login') {
 
     // add user to database
     $password = hash2($password);
+    // check if username taken
+    $exists = $db->get('students', [ 'username' => $username ], [ 'id' ]);
+    if ($exists != false && $exists != null)
+        emit(500, [ 'message' => 'Username Not Available']);
+    // push user to students table
     $id = $db->push('students', [
         'username' => $username,
         'password' => $password,
         'fullname' => $fullname
     ]);
+    // check if push fails
     if ($id === false)
         emit(500, [ 'message' => 'Could not push to database: ' . $db->error() ]);
+    // succeed if push works
     else $succeed($id, $username, $fullname);
 } else emit(404, [ 'message' => 'Server endpoint not found' ]);
 
