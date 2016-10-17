@@ -1,1 +1,1 @@
-# p2p-web
+# p2p-rest
