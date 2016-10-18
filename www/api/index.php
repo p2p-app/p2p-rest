@@ -7,6 +7,10 @@ require($reqpath . 'dolphin.php');
 require($reqpath . 'vendor/autoload.php');
 use Namshi\JOSE\SimpleJWS;
 
+// connect to MySQL database with Dolphin
+$db = new Dolphin($credentials);
+$db->connect();
+
 // get and correct request data
 $request_uri = $_SERVER['REQUEST_URI'];
 if (strpos($request_uri, '?') !== false)
@@ -29,59 +33,61 @@ if ($endpoint[0] == 'www')
 if ($endpoint[0] == 'api')
     $endpoint = array_slice($endpoint, 1);
 
-// connect to MySQL database with Dolphin
-$db = new Dolphin($credentials);
-$db->connect();
+/* REST API ENDPOINT LOGIC */
 
-// handle request based on endpoints
+// api/ base endpoint - respond with success
 if (count($endpoint) <= 0 || $endpoint[0] == '') {
     emit(true, [ 'message' => strtoupper($method) . ' request to `api/` successful' ]);
 }
-// login endpoint - authorize student/tutor username+password and respond with userdata+token
+// api/auth endpoint -  manage authorization
 elseif ($endpoint[0] == 'auth') {
-    // only allow posts
-    if ($method != 'post')
-        emit(405, [ 'message' => 'Please use `api/auth` with POST' ]);
-
-    // check username and password validity
-    $username = @$_POST['username'];
-    if (!isset($username) || !is_string($username) || !ctype_alnum($username))
-        emit(500, [ 'message' => 'Invalid Username']);
-    $username = strtolower($username);
-    $password = @$_POST['password'];
-    if (!isset($password) || !is_string($password) || !ctype_alnum($password))
-        emit(500, [ 'message' => 'Invalid Password']);
-
-    // function to run on success
-    $succeed = function ($id, $username, $fullname) {
-        emit(true, [
-            'token' => createToken($id, $username),
-            'data' => [
-                'id' => $id,
-                'username' => $username,
-                'fullname' => $fullname
-            ]
-        ]);
-    };
-
-    // check username and password against database
-    $password = hash2($password);
-    // check students table and succeed
-    $user = $db->get('students', [ 'username' => $username, 'password' => $password ], [ 'id', 'username', 'fullname' ]);
-    if ($user != false) $succeed($user['id'], $user['username'], $user['fullname']);
-    // check tutors table and succeed
-    else $user = $db->get('tutors', [ 'username' => $username, 'password' => $password ], [ 'id', 'username', 'fullname' ]);
-    if ($user != false) $succeed($user['id'], $user['username'], $user['fullname']);
-    // fail if username or password not found in either table
-    else emit(500, [ 'message' => 'Username/password not found' ]);
-}
-// students endpoint - manage students
-elseif ($endpoint[0] == 'students') {
-    // invalid endpoint
+    // api/auth/ base endpoint - [POST] - authorize student/tutor username + password and respond with user + token
     if (!isset($endpoint[1]) || $endpoint[1] == '?' || $endpoint[1] == '#' || $endpoint[1] == '/') {
-        emit(404, [ 'message' => 'Please use `api/students/create` or `api/students/{{id}}`' ]);
+        // only allow posts
+        if ($method != 'post')
+            emit(405, [ 'message' => 'Please use `api/auth` with POST' ]);
+
+        // check username and password validity
+        $username = @$_POST['username'];
+        if (!isset($username) || !is_string($username) || !ctype_alnum($username))
+            emit(500, [ 'message' => 'Invalid Username']);
+        $username = strtolower($username);
+        $password = @$_POST['password'];
+        if (!isset($password) || !is_string($password) || !ctype_alnum($password))
+            emit(500, [ 'message' => 'Invalid Password']);
+
+        // function to run on success
+        $succeed = function ($id, $username, $fullname) {
+            emit(true, [
+                'token' => createToken($id, $username),
+                'data' => [
+                    'id' => $id,
+                    'username' => $username,
+                    'fullname' => $fullname
+                ]
+            ]);
+        };
+
+        // check username and password against database
+        $password = hash2($password);
+        // check students table and succeed
+        $user = $db->get('students', [ 'username' => $username, 'password' => $password ], [ 'id', 'username', 'fullname' ]);
+        if ($user != false) $succeed($user['id'], $user['username'], $user['fullname']);
+        // check tutors table and succeed
+        else $user = $db->get('tutors', [ 'username' => $username, 'password' => $password ], [ 'id', 'username', 'fullname' ]);
+        if ($user != false) $succeed($user['id'], $user['username'], $user['fullname']);
+        // fail if username or password not found in either table
+        else emit(401, [ 'message' => 'Username/password not found' ]);
     }
-    // create endpoint - create new student user and respond with userdata+token
+    // api/auth/* unknown endpoint - invalid endpoint - respond with 404 error
+    else emit(404, [ 'message' => 'Please use `api/auth`' ]);
+}
+// api/students endpoint - manage students
+elseif ($endpoint[0] == 'students') {
+    // api/students/ base endpoint - invalid endpoint - respond with 404 error
+    if (!isset($endpoint[1]) || $endpoint[1] == '?' || $endpoint[1] == '#' || $endpoint[1] == '/')
+        emit(404, [ 'message' => 'Please use `api/students/create` or `api/students/:student_id`' ]);
+    // api/students/create endpoint - [POST] - create new student user and respond with student + token
     elseif ($endpoint[1] == 'create') {
         // only allow posts
         if ($method != 'post')
@@ -126,13 +132,15 @@ elseif ($endpoint[0] == 'students') {
                 'fullname' => $fullname
             ]
         ]);
-    } else {
-        // authorize
-        auth();
+    }
+    // api/students/:student_id endpoint - [GET][AUTH] - respond with student
+    else {
+        // authenticate
+        authenticate();
 
         // only allow gets
         if ($method != 'get')
-            emit(405, [ 'message' => 'Please use `api/students/{{id}}` with GET' ]);
+            emit(405, [ 'message' => 'Please use `api/students/:student_id` with GET' ]);
 
         // validate and check for id in database
         $id = $endpoint[1];
@@ -151,14 +159,22 @@ elseif ($endpoint[0] == 'students') {
         ]);
     }
 }
-// tutors endpoint - manage tutors
+// api/tutors endpoint - manage tutors
 elseif($endpoint[0] == 'tutors') {
-    // invalid endpoint
+    // api/tutors/ base endpoint - [GET][AUTH] - respond with tutors based on location and subject
     if (!isset($endpoint[1]) || $endpoint[1] == '?' || $endpoint[1] == '#' || $endpoint[1] == '/') {
-        emit(404, [ 'message' => 'Please use `api/tutors/create` or `api/tutors/{{id}}`' ]);
+        // authenticate
+        authenticate();
+
+        // only allow gets
+        if ($method != 'get')
+            emit(405, [ 'message' => 'Please use `api/tutors` with GET' ]);
+
+        // under construction
+        emit(501, [ 'message' => 'Cannot get tutors - under construction' ]);
     }
-    // create endpoint - create new tutor user and respond with userdata+token
-    if ($endpoint[1] == 'create') {
+    // api/create endpoint - [POST] - create new tutor user and respond with tutor + token
+    elseif ($endpoint[1] == 'create') {
         // only allow posts
         if ($method != 'post')
             emit(405, [ 'message' => 'Please use `api/tutors/create` with POST' ]);
@@ -225,40 +241,102 @@ elseif($endpoint[0] == 'tutors') {
                 'stars' => 0
             ]
         ]);
-    } else {
-        // authorize
-        auth();
+    }
+    // api/tutors/:tutor_id endpoint - [GET/POST][AUTH] - manage tutor data
+    else {
+        // authenticate
+        authenticate();
 
-        // only allow gets
-        if ($method != 'get')
-            emit(405, [ 'message' => 'Please use `api/tutors/{{id}}` with GET' ]);
+        // api/tutors/:tutor_id/reviews endpoint - [GET/POST][AUTH] - manage tutor reviews
+        if (@$endpoint[2] == 'reviews') {
+            // api/tutors/:tutor_id/reviews/ base endpoint - [GET][AUTH] - respond with tutor reviews
+            if (!isset($endpoint[3]) || $endpoint[3] == '?' || $endpoint[3] == '#' || $endpoint[3] == '/') {
+                // only allow gets
+                if ($method != 'get')
+                    emit(405, [ 'message' => 'Please use `api/tutors/:tutor_id/reviews` with GET' ]);
 
-        // validate and check for id in database
-        $id = $endpoint[1];
-        if (!isset($id) || !is_string($id) || !ctype_alnum($id))
-            emit(500, [ 'message' => 'Invalid ID']);
-        $tutor = $db->get('tutors', $id);
-        if ($tutor == null || $tutor == false || !is_array($tutor))
-            emit(500, [ 'message' => 'User not found']);
-        // respond with user data
-        emit(true, [
-            'data' => [
-                'id' => $tutor['id'],
-                'username' => $tutor['username'],
-                'fullname' => $tutor['fullname'],
-                'school' => $tutor['school'],
-                'bio' => $tutor['bio'],
-                'subjects' => $tutor['subjects'],
-                'stars' => $tutor['stars']
-            ]
-        ]);
+                // under construction
+                emit(501, [ 'message' => 'Cannot get reviews - under construction' ]);
+            }
+            // api/tutors/:tutor_id/reviews/create endpoint - [POST][AUTH] - create review for tutor
+            elseif ($endpoint[3] == 'create') {
+                // only allow posts
+                if ($method != 'post')
+                    emit(405, [ 'message' => 'Please use `api/tutors/:tutor_id/reviews/create` with POST' ]);
+
+                // under construction
+                emit(501, [ 'message' => 'Cannot create review - under construction' ]);
+            }
+            // api/tutors/:tutor_id/reviews/:review_id endpoint - [GET][AUTH] - respond with review
+            else {
+                // only allow gets
+                if ($method != 'get')
+                    emit(405, [ 'message' => 'Please use `api/tutors/:tutor_id/reviews/:review_id` with GET' ]);
+
+                // under construction
+                emit(501, [ 'message' => 'Cannot get review - under construction' ]);
+            }
+        }
+        // api/tutors/:tutor_id endpoint - [GET][AUTH] - respond with tutor
+        else {
+            // only allow gets
+            if ($method != 'get')
+                emit(405, [ 'message' => 'Please use `api/tutors/:tutor_id` with GET' ]);
+
+            // validate and check for id in database
+            $id = $endpoint[1];
+            if (!isset($id) || !is_string($id) || !ctype_alnum($id))
+                emit(500, [ 'message' => 'Invalid ID']);
+            $tutor = $db->get('tutors', $id);
+            if ($tutor == null || $tutor == false || !is_array($tutor))
+                emit(500, [ 'message' => 'User not found']);
+            // respond with user data
+            emit(true, [
+                'data' => [
+                    'id' => $tutor['id'],
+                    'username' => $tutor['username'],
+                    'fullname' => $tutor['fullname'],
+                    'school' => $tutor['school'],
+                    'bio' => $tutor['bio'],
+                    'subjects' => $tutor['subjects'],
+                    'stars' => $tutor['stars']
+                ]
+            ]);
+        }
     }
 }
-// invalid endpoint - respond with 404 error
+// api/sessions endpoint - manage sessions
+elseif($endpoint[0] == 'sessions') {
+    // authenticate
+    authenticate();
+
+    // api/sessions/ base endpoint - invalid endpoint - respond with 404 error
+    if (!isset($endpoint[1]) || $endpoint[1] == '?' || $endpoint[1] == '#' || $endpoint[1] == '/')
+        emit(404, [ 'message' => 'Please use `api/sessions/create` or `api/sessions/:session_id`' ]);
+    // api/sessions/create endpoint - [POST][AUTH] - create new session and respond with session
+    elseif ($endpoint[1] == 'create') {
+        // only allow gets
+        if ($method != 'post')
+            emit(405, [ 'message' => 'Please use `api/sessions/create` with POST' ]);
+
+        // under construction
+        emit(501, [ 'message' => 'Cannot create session - under construction' ]);
+    }
+    // api/sessions/:session_id endpoint - [GET][AUTH] - respond with session
+    else {
+        // only allow gets
+        if ($method != 'get')
+            emit(405, [ 'message' => 'Please use `api/sessions/:session_id` with GET' ]);
+
+        // under construction
+        emit(501, [ 'message' => 'Cannot get session - under construction' ]);
+    }
+}
+// api/* unknown endpoint - invalid endpoint - respond with 404 error
 else emit(404, [ 'message' => 'Server endpoint not found' ]);
 
 
-// declare convenience functions
+/* CONVENIENCE FUNCTIONS */
 
 // function for responding to/closing request
 function emit($code, $data) {
@@ -316,7 +394,7 @@ function createToken($id, $username) {
 }
 
 // function for authenticating tokens
-function auth() {
+function authenticate() {
     global $db;
     // get token from header
     $token = @$_SERVER['HTTP_AUTHORIZATION'];
@@ -344,8 +422,9 @@ function auth() {
             'username' => $payload['username']
         ], [ 'id' ]);
         if ($validTutor === false)
-            emit(401, [ 'message' => 'Invalid username/id in Authorization Token' ]);
+            emit(401, [ 'message' => 'Invalid username/user_id in Authorization Token' ]);
     }
+    // return true on success
     return true;
 }
 
