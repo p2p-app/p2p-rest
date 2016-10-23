@@ -110,10 +110,10 @@ elseif ($endpoint[0] == 'students') {
         // check if username taken
         $exists = $db->get('students', [ 'username' => $username ], [ 'id' ]);
         if ($exists != false && $exists != null)
-            emit(500, [ 'message' => 'Username Not Available']);
+            emit(409, [ 'message' => 'Username Not Available']);
         $exists = $db->get('tutors', [ 'username' => $username ], [ 'id' ]);
         if ($exists != false && $exists != null)
-            emit(500, [ 'message' => 'Username Not Available']);
+            emit(409, [ 'message' => 'Username Not Available']);
         // push user to students table
         $id = $db->push('students', [
             'username' => $username,
@@ -205,10 +205,10 @@ elseif($endpoint[0] == 'tutors') {
         // check if username taken
         $exists = $db->get('students', [ 'username' => $username ], [ 'id' ]);
         if ($exists != false && $exists != null)
-            emit(500, [ 'message' => 'Username Not Available']);
+            emit(409, [ 'message' => 'Username Not Available']);
         $exists = $db->get('tutors', [ 'username' => $username ], [ 'id' ]);
         if ($exists != false && $exists != null)
-            emit(500, [ 'message' => 'Username Not Available']);
+            emit(409, [ 'message' => 'Username Not Available']);
         // push user to students table
         $id = $db->push('tutors', [
             'username' => $username,
@@ -247,6 +247,14 @@ elseif($endpoint[0] == 'tutors') {
         // authenticate
         authenticate();
 
+        // validate and check for id in database
+        $id = $endpoint[1];
+        if (!isset($id) || !is_string($id) || !ctype_alnum($id))
+            emit(500, [ 'message' => 'Invalid ID']);
+        $tutor = $db->get('tutors', $id);
+        if ($tutor == null || $tutor == false || !is_array($tutor))
+            emit(500, [ 'message' => 'Tutor not found']);
+
         // api/tutors/:tutor_id/reviews endpoint - [GET/POST][AUTH] - manage tutor reviews
         if (@$endpoint[2] == 'reviews') {
             // api/tutors/:tutor_id/reviews/ base endpoint - [GET][AUTH] - respond with tutor reviews
@@ -255,8 +263,14 @@ elseif($endpoint[0] == 'tutors') {
                 if ($method != 'get')
                     emit(405, [ 'message' => 'Please use `api/tutors/:tutor_id/reviews` with GET' ]);
 
-                // under construction
-                emit(501, [ 'message' => 'Cannot get reviews - under construction' ]);
+                $reviews = $db->get('reviews', [ 'forTutor' => $id ]);
+                if ($reviews === false)
+                    emit(500, [ 'message' => 'Error while fetching reviews' ]);
+                elseif ($reviews == null || count($reviews) == 0)
+                    emit(true, [ 'data' => [] ]);
+                elseif (array_keys($reviews) !== range(0, count($reviews) - 1)) {
+                    emit(true, [ 'data' => [ $reviews ] ]);
+                } else emit(true, [ 'data' => $reviews ]);
             }
             // api/tutors/:tutor_id/reviews/create endpoint - [POST][AUTH] - create review for tutor
             elseif ($endpoint[3] == 'create') {
@@ -264,8 +278,43 @@ elseif($endpoint[0] == 'tutors') {
                 if ($method != 'post')
                     emit(405, [ 'message' => 'Please use `api/tutors/:tutor_id/reviews/create` with POST' ]);
 
-                // under construction
-                emit(501, [ 'message' => 'Cannot create review - under construction' ]);
+                // check data validity
+                $from = @$_POST['from'];
+                if (!isset($from) || !is_string($from) || !ctype_alnum($from))
+                    emit(500, [ 'message' => 'Invalid "from" user id']);
+                $stars = @$_POST['stars'];
+                if (!isset($stars) || !is_numeric($stars))
+                    emit(500, [ 'message' => 'Invalid stars']);
+                else $stars = intval($stars);
+                $text = @$_POST['text'];
+                if (!isset($text) || !is_string($text) /*|| !ctype_alnum(str_replace([ ' ', '-', '.', ',', '(', ')', ';', ':', "'", '"', '!', '?' ], '', $text))*/)
+                    emit(500, [ 'message' => 'Invalid text']);
+
+                // check for "from" user in database
+                $fromUser = $db->get('students', $from);
+                if ($fromUser === false || $fromUser == null)
+                    emit(500, [ 'message' => '"From" user not found' ]);
+
+                $review = $db->push('reviews', [
+                    'forTutor' => $id,
+                    'fromStudent' => $from,
+                    'stars' => [
+                        'val' => $stars,
+                        'type' => 'integer(100)'
+                    ],
+                    'reviewText' => [
+                        'val' => $text,
+                        'type' => 'text'
+                    ]
+                ]);
+                if ($review === false)
+                    emit(500, [ 'message' => 'Error while creating review', 'error' => $db->error() ]);
+                else emit(true, [
+                    'id' => $review,
+                    'from' => $from,
+                    'stars' => $stars,
+                    'text' => $text
+                ]);
             }
             // api/tutors/:tutor_id/reviews/:review_id endpoint - [GET][AUTH] - respond with review
             else {
@@ -273,8 +322,15 @@ elseif($endpoint[0] == 'tutors') {
                 if ($method != 'get')
                     emit(405, [ 'message' => 'Please use `api/tutors/:tutor_id/reviews/:review_id` with GET' ]);
 
-                // under construction
-                emit(501, [ 'message' => 'Cannot get review - under construction' ]);
+                $review = $db->get('reviews', [
+                    'id' => $endpoint[3],
+                    'forTutor' => $id
+                ]);
+                if ($review === false)
+                    emit(500, [ 'message' => 'Error while fetching review' ]);
+                elseif ($review == null || count($review) == 0)
+                    emit(500, [ 'message' => 'Review not found' ]);
+                else emit(true, [ 'data' => [ $review ] ]);
             }
         }
         // api/tutors/:tutor_id endpoint - [GET][AUTH] - respond with tutor
@@ -283,14 +339,7 @@ elseif($endpoint[0] == 'tutors') {
             if ($method != 'get')
                 emit(405, [ 'message' => 'Please use `api/tutors/:tutor_id` with GET' ]);
 
-            // validate and check for id in database
-            $id = $endpoint[1];
-            if (!isset($id) || !is_string($id) || !ctype_alnum($id))
-                emit(500, [ 'message' => 'Invalid ID']);
-            $tutor = $db->get('tutors', $id);
-            if ($tutor == null || $tutor == false || !is_array($tutor))
-                emit(500, [ 'message' => 'User not found']);
-            // respond with user data
+            // respond with tutor data
             emit(true, [
                 'data' => [
                     'id' => $tutor['id'],
