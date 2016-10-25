@@ -1,2 +1,2 @@
-# p2p-rest
-&nbsp;&nbsp;REST API for P2P peer tutoring app
+# p2p-backend
+REST API and WebSocket Backend for peer2peer (peer tutoring app)
