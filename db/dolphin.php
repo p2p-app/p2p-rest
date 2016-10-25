@@ -82,7 +82,7 @@ class Dolphin {
                 $num_rows = $result->num_rows;
                 $result->free();
                 // prepare to add column if not exists
-                if ($num_rows <= 0) $newColumns .= "ADD $attribute $type, ";
+                if ($num_rows <= 0) $newColumns .= "ADD COLUMN `$attribute` $type, ";
                 // prepare update attributes to use later
                 $updates .= ",$attribute=?";
             }
@@ -246,16 +246,70 @@ class Dolphin {
         elseif (is_array($child)) {
             // loop through desired data
             $where = '';
-            foreach ($child as $attribute => $expected)
-                $where .= "$attribute=? AND ";
-            $where = substr($where, 0, strlen($where) - 5);
+            $types = '';
+            $expectedValues = [];
+            $lastNextOpLength = 0;
+            foreach ($child as $attribute => $value) {
+                if (!is_string($attribute))
+                    $attribute = $value['attribute'];
+                if (is_array($value)) {
+                    // create condition
+                    if (isset($value['condition']) && is_string($value['condition'])) {
+                        $where .= $attribute . (strlen($value['condition']) >= 1 && substr($value['condition'], 0, 1) == '=' ? '' : ' ') . $value['condition'];
+                        $expected = @$value['expected'];
+                        if (isset($expected)) {
+                            if (!is_array($expected))
+                                $expected = [ $expected ];
+                            for ($j = 0; $j < count($expected); $j++) {
+                                if (is_array($expected[$j])) {
+                                    array_push($expectedValues, $expected[$j]['val']);
+                                    $types .= $expected[$j]['type'];
+                                } else {
+                                    array_push($expectedValues, $expected[$j]);
+                                    $types .= 's';
+                                }
+                            }
+                        }
+                    } else {
+                        $where .= $attribute;
+                        $expected = @$value['expected'];
+                        if (isset($expected)) {
+                            $q = '?';
+                            if (@$value['prepare'] === false)
+                                $q = (is_array($expected)) ? $expected['val'] : $expected;
+                            if (is_string($value['whereOperator']))
+                                $where .= $value['whereOperator'] . $q;
+                            else $where .= "=$q";
+                            if ($q == '?') {
+                                if (is_array($expected)) {
+                                    array_push($expectedValues, $expected['val']);
+                                    $types .= $expected['type'];
+                                } else {
+                                    array_push($expectedValues, $expected[$j]);
+                                    $types .= 's';
+                                }
+                            }
+                        }
+                    }
+                    // create next (joining) operator
+                    if (!is_string(@$value['nextOperator']))
+                        $value['nextOperator'] = '';
+                    $where .= ' ' . $value['nextOperator'] . ' ';
+                    $lastNextOpLength = 1;
+                } else {
+                    $where .= "$attribute=? AND ";
+                    $lastNextOpLength = 5;
+                    array_push($expectedValues, $value);
+                    $types .= 's';
+                }
+            }
+            $where = substr($where, 0, strlen($where) - $lastNextOpLength);
             // if data not provided, get all child data
             if ($nullData) $query = "SELECT * FROM `$table` WHERE $where";
             // if data provided, get specified data
             else $query = "SELECT " . implode(',', $data) . " FROM `$table` WHERE $where";
 
-            $types = str_pad('', count($child), 's');
-            $bind_params = array_merge([$types], array_values($child));
+            $bind_params = array_merge([$types], $expectedValues);
 
             for ($i = 0; $i < count($bind_params); $i++)
                 $bind_params[$i] = &$bind_params[$i];
