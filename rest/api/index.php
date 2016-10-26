@@ -97,10 +97,10 @@ elseif ($endpoint[0] == 'auth') {
 }
 // 'api/students' endpoint - manage students
 elseif ($endpoint[0] == 'students') {
-    // 'api/students' base endpoint - invalid - respond with 404
+    // 'students' base endpoint - invalid - respond with 404
     if (!isset($endpoint[1]) || $endpoint[1] == '?' || $endpoint[1] == '#' || $endpoint[1] == '/')
         emit(404, [ 'message' => 'Please use `api/students/create` or `api/students/:student_id`' ]);
-    // 'api/students/create' endpoint - [POST] - create new student and respond with student + token
+    // 'students/create' endpoint - [POST] - create new student and respond with student + token
     elseif ($endpoint[1] == 'create') {
         // only allow posts
         if ($method != 'post')
@@ -173,7 +173,7 @@ elseif ($endpoint[0] == 'students') {
 }
 // 'api/tutors' endpoint - manage tutors
 elseif($endpoint[0] == 'tutors') {
-    // 'api/tutors' base endpoint - [GET][AUTH] - respond with tutors based on location and subject
+    // 'tutors' base endpoint - [GET][AUTH] - respond with tutors based on location and subject
     if (!isset($endpoint[1]) || $endpoint[1] == '?' || $endpoint[1] == '#' || $endpoint[1] == '/') {
         // authenticate
         authenticate();
@@ -258,7 +258,7 @@ elseif($endpoint[0] == 'tutors') {
 
         emit(true, $modTutors);
     }
-    // 'api/tutors/create' endpoint - [POST] - create new tutor user and respond with tutor + token
+    // 'tutors/create' endpoint - [POST] - create new tutor user and respond with tutor + token
     elseif ($endpoint[1] == 'create') {
         // only allow posts
         if ($method != 'post')
@@ -346,7 +346,7 @@ elseif($endpoint[0] == 'tutors') {
             ]
         ]);
     }
-    // 'api/tutors/:tutor_id' endpoint - manage tutor
+    // 'tutors/:tutor_id' endpoint - manage tutor
     else {
         // authenticate
         $token = authenticate();
@@ -359,9 +359,9 @@ elseif($endpoint[0] == 'tutors') {
         if ($tutor == null || $tutor == false || !is_array($tutor))
             emit(500, [ 'message' => 'Tutor not found']);
 
-        // 'api/tutors/:tutor_id/reviews' endpoint - manage tutor reviews
+        // ':tutor_id/reviews' endpoint - manage tutor reviews
         if (@$endpoint[2] == 'reviews') {
-            // 'api/tutors/:tutor_id/reviews' base endpoint - [GET][AUTH] - respond with tutor reviews
+            // 'reviews' base endpoint - [GET][AUTH] - respond with tutor reviews
             if (!isset($endpoint[3]) || $endpoint[3] == '?' || $endpoint[3] == '#' || $endpoint[3] == '/') {
                 // only allow gets
                 if ($method != 'get')
@@ -376,7 +376,7 @@ elseif($endpoint[0] == 'tutors') {
                     emit(true, [ $reviews ]);
                 } else emit(true, $reviews);
             }
-            // 'api/tutors/:tutor_id/reviews/create' endpoint - [POST][AUTH] - create review for tutor
+            // 'reviews/create' endpoint - [POST][AUTH] - create review for tutor
             elseif ($endpoint[3] == 'create') {
                 // only allow posts
                 if ($method != 'post')
@@ -452,7 +452,7 @@ elseif($endpoint[0] == 'tutors') {
                     'text' => $text
                 ]);
             }
-            // 'api/tutors/:tutor_id/reviews/:review_id' endpoint - [GET][AUTH] - respond with review
+            // 'reviews/:review_id' endpoint - [GET][AUTH] - respond with review
             else {
                 // only allow gets
                 if ($method != 'get')
@@ -469,7 +469,7 @@ elseif($endpoint[0] == 'tutors') {
                 else emit(true, [ $review ]);
             }
         }
-        // 'api/tutors/:tutor_id/hours' endpoint - [GET/POST][AUTH] - manage tutor hours
+        // ':tutor_id/hours' endpoint - [GET/POST][AUTH] - manage tutor hours
         elseif (@$endpoint[2] == 'hours') {
             // only allow gets/posts
             if ($method != 'post' && $method != 'get')
@@ -520,7 +520,7 @@ elseif($endpoint[0] == 'tutors') {
                 ]);
             }
         }
-        // 'api/tutor/:tutor_id/location' endpoint - [GET/POST][AUTH] - manage session location
+        // ':tutor_id/location' endpoint - [GET/POST][AUTH] - manage session location
         if (@$endpoint[2] == 'location') {
             // only allow gets/posts
             if ($method != 'post' && $method != 'get')
@@ -577,7 +577,7 @@ elseif($endpoint[0] == 'tutors') {
                 ]);
             }
         }
-        // 'api/tutors/:tutor_id' endpoint - [GET][AUTH] - respond with tutor
+        // ':tutor_id' endpoint - [GET][AUTH] - respond with tutor
         else {
             // only allow gets
             if ($method != 'get')
@@ -602,15 +602,15 @@ elseif($endpoint[0] == 'tutors') {
         }
     }
 }
-// api/sessions endpoint - manage sessions
+// 'api/sessions' endpoint - manage sessions
 elseif($endpoint[0] == 'sessions') {
     // authenticate
     $token = authenticate();
 
-    // 'api/sessions' base endpoint - invalid - respond with 404
+    // 'sessions' base endpoint - invalid - respond with 404
     if (!isset($endpoint[1]) || $endpoint[1] == '?' || $endpoint[1] == '#' || $endpoint[1] == '/')
         emit(404, [ 'message' => 'Please use `api/sessions/create` or `api/sessions/:session_id`' ]);
-    // 'api/sessions/create' endpoint - [POST][AUTH] - create new session and respond with session
+    // 'sessions/create' endpoint - [POST][AUTH] - create new session and respond with session
     elseif ($endpoint[1] == 'create') {
         // only allow gets
         if ($method != 'post')
@@ -670,7 +670,7 @@ elseif($endpoint[0] == 'sessions') {
             'state' => 'pending'
         ]);
     }
-    // 'api/sessions/:session_id' endpoint - manage session
+    // 'sessions/:session_id' endpoint - manage session
     else {
         // validate and check for id in database
         $id = $endpoint[1];
@@ -680,7 +680,7 @@ elseif($endpoint[0] == 'sessions') {
         if ($session == null || $session == false || !is_array($session))
             emit(500, [ 'message' => 'Session not found']);
 
-        // 'api/sessions/:session_id/location' endpoint - [GET/POST][AUTH] - manage session location
+        // ':session_id/location' endpoint - [GET/POST][AUTH] - manage session location
         if (@$endpoint[2] == 'location') {
             // only allow gets/posts
             if ($method != 'post' && $method != 'get')
@@ -741,7 +741,7 @@ elseif($endpoint[0] == 'sessions') {
                 ]);
             }
         }
-        // 'api/sessions/:session_id/state' endpoint - [GET/POST][AUTH] - manage session state
+        // ':session_id/state' endpoint - [GET/POST][AUTH] - manage session state
         elseif (@$endpoint[2] == 'state') {
             // only allow gets/posts
             if ($method != 'post' && $method != 'get')
@@ -801,7 +801,7 @@ elseif($endpoint[0] == 'sessions') {
                 ]);
             }
         }
-        // 'api/sessions/:session_id' endpoint - [GET][AUTH] - respond with session
+        // ':session_id' endpoint - [GET][AUTH] - respond with session
         else {
             // only allow gets
             if ($method != 'get')
