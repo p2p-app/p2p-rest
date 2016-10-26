@@ -1,4 +1,4 @@
-NOTES
+NOTES/LEGEND
     - parameter=value means value is the confirmed value of that parameter
     - &parameter means parameter is optional
         - &parameter=default means parameter is optional and defaults to specified default
@@ -9,7 +9,7 @@ NOTES
             "uri": "api/:some_path"
         }
 
-REST ENDPOINTS
+REST API ENDPOINTS
 api
 	GET/POST/PUT/DELETE
 		Body: (null)

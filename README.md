@@ -1,6 +1,9 @@
 # p2p-backend
 REST API and WebSocket Backend for peer2peer (peer tutoring app)
 
+## documentation
+View minimal documentation [here](http://p2p.anuv.me/docs.txt)
+
 ## instructions
 To run the REST API backend locally:
  1. Install PHP 5.6.x, Apache web server, and MySQL database (preferably [XAMPP](https://www.apachefriends.org/))
