@@ -1,0 +1,250 @@
+NOTES
+    - parameter=value means value is the confirmed value of that parameter
+    - &parameter means parameter is optional
+        - &parameter=default means parameter is optional and defaults to specified default
+    - parameter(format) means parameter has specific type or format besides string
+    - On error, all requests to `api/*` return this object:
+        {
+            "message": "Some message about the error type"
+            "uri": "api/:some_path"
+        }
+
+REST ENDPOINTS
+api
+	GET/POST/PUT/DELETE
+		Body: (null)
+        Returns: message
+    auth
+        POST
+            Body: {
+                username(case-insensitive, alphanumeric),
+                password(alphanumeric)
+            }
+            Returns: {
+                token,
+                data: {
+            	   id,
+                   username,
+                   fullname
+               }
+            }
+        GET AUTH
+        	Body: (null)
+        	Returns: {
+                data: {
+                	id,
+                    username,
+                    fullname
+                }
+            }
+    students
+        create
+    		Body: {
+                username(alphanumeric),
+                password(alphanumeric),
+                fullname(alphanumeric except space, dash, comma, period)
+            }
+    		Returns: {
+                token,
+                data: {
+            	   id,
+                   username,
+                   fullname
+               }
+            }
+        :student_id
+            GET AUTH
+            	Body: (null)
+            	Returns: {
+            	   id,
+                   username,
+                   fullname
+               }
+    tutors
+    	GET AUTH
+    		Body: {
+                lat(float),
+                long(float),
+                subjects(CSV),
+                &latrange(float)=0.0001,
+                &longrange(float)=0.0001,
+                &range(float)=0.0001
+            }
+    		Returns: [
+                tutor1(tutor_object),
+                tutor2(tutor_object),
+                …
+            ]
+    		create
+    			Body: {
+                    username(alphanumeric),
+                    password(alphanumeric),
+                    fullname(alphanumeric except space, dash, comma, period),
+                    school(alphanumeric except space, dash, comma, period, parentheses),
+                    bio, subjects(CSV, alphanumeric except space, dash, comma, period, parentheses),
+                    city(alphanumeric except space, dash, comma, period)
+                }
+    			Returns: {
+                    token,
+                    data: {
+        				id,
+                        username,
+                        fullname,
+                        school,
+                        bio,
+                        subjects(CSV),
+                        stars(float/null)=null,
+                        hours(int)=0,
+                        city,
+                        location: [
+        					lat(float/null),
+                            long(float/null)
+        				]
+        			}
+                }
+		:tutor_id
+			GET AUTH
+    			Body: (null)
+                Returns: {
+                    id,
+                    username,
+                    fullname,
+                    school,
+                    bio,
+                    subjects(CSV),
+                    stars(float/null),
+                    hours(int),
+                    city,
+                    location: [
+                        lat(float/null),
+                        long(float/null)
+                    ]
+                }
+    		reviews
+    			GET AUTH
+        			Body: (null)
+                        Returns: [
+                            review1(review_object),
+                            review2(review_object),
+                            …
+                        ]
+    			create
+    				POST AUTH
+                        Body: {
+                            from(student_id, alphanumeric),
+                            stars(float),
+                            text
+                        }
+        				Returns: {
+                            id,
+                            from,
+                            stars,
+                            text
+                        }
+                :review_id
+                    GET AUTH
+                        Body: (null)
+                        Returns: {
+                            id,
+                            from,
+                            stars,
+                            text
+                        }
+            hours
+                POST AUTH
+                    Body: {
+                        hours(int),
+                        &add(bool)=false
+                    }
+                    Returns: {
+                        hours
+                    }
+                GET AUTH
+                    Body: (null)
+                    Returns: {
+                        hours
+                    }
+            location
+                POST AUTH
+                    Body: {
+                        lat(float/null),
+                        long(float/null)
+                    }
+                    Returns: {
+                        lat(float/null),
+                        long(float/null)
+                    }
+                GET AUTH
+                    Body: (null)
+                    Returns: {
+                        lat(float/null),
+                        long(float/null)
+                    }
+    sessions
+            create
+                POST AUTH
+                    Body: {
+                        student(student_id, alphanumeric),
+                        tutor(tutor_id, alphanumeric),
+                        lat(-90 < float < 90),
+                        long(-180 < float < 180)
+                    }
+                    Returns: {
+                        id,
+                        student,
+                        tutor,
+                        location: [
+                            lat(float),
+                            long(float)
+                        ],
+                        created(ISO8601_date)
+                        state="pending"
+                    }
+            :session_id
+                GET AUTH (only student or tutor from session)
+                    Body: (null)
+                    Returns: {
+                        id,
+                        location: [
+                            lat(float),
+                            long(float)
+                        ],
+                        student,
+                        tutor,
+                        created(ISO8601_date),
+                        state="pending"
+                            or "confirmed"
+                            or "commenced"
+                            or "completed"
+                    }
+                location
+                    POST AUTH (only student from session)
+                        Body: {
+                            lat(-90 < float < 90),
+                            long(-180 < float < 180)
+                        }
+                        Returns: {
+                            lat(float/null),
+                            long(float/null)
+                        }
+                    GET AUTH (only student or tutor from session)
+                        Body: (null)
+                        Returns: {
+                            lat(float/null),
+                            long(float/null)
+                        }
+                state
+                    POST AUTH (only student or tutor from session)
+                        Body: {
+                            action="confirm" (only tutor from session)
+                                or "commence" (only student from session)
+                                or "complete" (only student from session)
+                        }
+                    GET AUTH (only student or tutor from session)
+                        Body: (null)
+                        Returns: {
+                            state="pending"
+                                or "confirmed"
+                                or "commenced"
+                                or "completed"
+                        }

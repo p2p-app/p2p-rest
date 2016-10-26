@@ -41,7 +41,7 @@ elseif ($endpoint[0] == 'auth') {
     if (!isset($endpoint[1]) || $endpoint[1] == '?' || $endpoint[1] == '#' || $endpoint[1] == '/') {
         // only allow posts and gets
         if ($method != 'post' && $method != 'get')
-            emit(405, [ 'message' => 'Please use `api/auth` with POST' ]);
+            emit(405, [ 'message' => 'Please use `api/auth` with GET/POST' ]);
 
         // [POST] authorize student/tutor username + password and respond with user + token
         if ($method == 'post') {
@@ -146,7 +146,7 @@ elseif ($endpoint[0] == 'students') {
             ]
         ]);
     }
-    // 'api/students/:student_id' endpoint - [GET][AUTH] - respond with student
+    // 'students/:student_id' endpoint - [GET][AUTH] - respond with student
     else {
         // authenticate
         $token = authenticate();
@@ -466,14 +466,19 @@ elseif($endpoint[0] == 'tutors') {
                     emit(500, [ 'message' => 'Error while fetching review' ]);
                 elseif ($review == null || (is_array($review) && count($review) == 0))
                     emit(500, [ 'message' => 'Review not found' ]);
-                else emit(true, [ $review ]);
+                else emit(true, [
+                    'id' => $review['id'],
+                    'from' => $review['fromStudent'],
+                    'stars' => $review['stars'],
+                    'text' => $review['reviewText']
+                ]);
             }
         }
         // ':tutor_id/hours' endpoint - [GET/POST][AUTH] - manage tutor hours
         elseif (@$endpoint[2] == 'hours') {
             // only allow gets/posts
             if ($method != 'post' && $method != 'get')
-                emit(405, [ 'message' => 'Please use `api/tutors/:tutor_id/location` with GET/POST' ]);
+                emit(405, [ 'message' => 'Please use `api/tutors/:tutor_id/hours` with GET/POST' ]);
 
             // [POST] set tutor hours
             if ($method == 'post') {
@@ -813,9 +818,9 @@ elseif($endpoint[0] == 'sessions') {
 
             // check data existence
             $lat = @$session['latitude'];
-            if (!isset($lat)) $lat = 'null';
+            if (!isset($lat) || floatval($lat) > 180) $lat = 'null';
             $long = @$session['longitude'];
-            if (!isset($long)) $long = 'null';
+            if (!isset($long) || floatval($long) > 180) $long = 'null';
 
             emit(true, [
                 'id' => $session['id'],
