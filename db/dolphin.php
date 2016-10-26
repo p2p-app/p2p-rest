@@ -21,6 +21,10 @@ class Dolphin {
         $this->errors = [];
     }
 
+    public function __destruct() {
+        $this->disconnect();
+    }
+
     // PUBLIC METHODS
 
     // method for connecting to mysql database
@@ -31,9 +35,14 @@ class Dolphin {
             $this->dbinfo['pass'],
             $this->dbinfo['name']
         );
-        $db = $this->database;
-        if ($db->connect_errno > 0)
-            return $this->fail("Could not connect to database: [$db->connect_error]");
+        if ($this->database->connect_errno > 0)
+            return $this->fail("Could not connect to database: [{$this->database->connect_error}]");
+    }
+
+    // method for disconnecting from mysql database
+    public function disconnect() {
+        if (isset($this->database))
+            @$this->database->close();
     }
 
     // method for setting keys with values
@@ -131,7 +140,7 @@ class Dolphin {
     }
 
     // method for adding new entries with new IDs
-    public function push($table, $data = null) {
+    public function push($table, $data = null, $length = 10) {
         $db = $this->database;
         $id = '';
         $query = "SHOW TABLES LIKE '$table'";
@@ -144,7 +153,7 @@ class Dolphin {
         $result->free();
         if ($num_rows > 0) {
             while (true) {
-                $id = $this->id();
+                $id = $this->id($length);
                 $query = "SELECT id FROM `$table` WHERE id=?";
                 if (!$sql = $db->prepare($query))
                     return $this->fail("Could not prepare statement [$db->error]");
@@ -155,7 +164,7 @@ class Dolphin {
                 $num_rows = $result->num_rows;
                 if ($num_rows <= 0) break;
             }
-        } else $id = $this->id();
+        } else $id = $this->id($length);
         if ($this->set($table, $id, $data) === true)
             return $id;
         else return false;
