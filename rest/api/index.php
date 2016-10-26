@@ -22,74 +22,85 @@ $endpoint = explode('/', $request_uri);
 $method = strtolower($_SERVER['REQUEST_METHOD']);
 
 // correct request endpoint
-if ($endpoint[0] == '')
-    $endpoint = array_slice($endpoint, 1);
-if ($endpoint[0] == 'sites')
-    $endpoint = array_slice($endpoint, 1);
-if ($endpoint[0] == 'p2p')
-    $endpoint = array_slice($endpoint, 1);
-if ($endpoint[0] == 'www')
-    $endpoint = array_slice($endpoint, 1);
-if ($endpoint[0] == 'rest')
-    $endpoint = array_slice($endpoint, 1);
-if ($endpoint[0] == 'api')
-    $endpoint = array_slice($endpoint, 1);
+if ($endpoint[0] == '') $endpoint = array_slice($endpoint, 1);
+if ($endpoint[0] == 'sites') $endpoint = array_slice($endpoint, 1);
+if ($endpoint[0] == 'p2p') $endpoint = array_slice($endpoint, 1);
+if ($endpoint[0] == 'www') $endpoint = array_slice($endpoint, 1);
+if ($endpoint[0] == 'rest') $endpoint = array_slice($endpoint, 1);
+if ($endpoint[0] == 'api') $endpoint = array_slice($endpoint, 1);
 
-/* REST API ENDPOINT LOGIC */
+/* REST API ENDPOINTS */
 
-// api/ base endpoint - respond with success
+// 'api' base endpoint - [*] - respond with 200
 if (count($endpoint) <= 0 || $endpoint[0] == '') {
     emit(true, [ 'message' => strtoupper($method) . ' request to `api/` successful' ]);
 }
-// api/auth endpoint -  manage authorization
+// 'api/auth' endpoint - manage authorization/authentication
 elseif ($endpoint[0] == 'auth') {
-    // api/auth/ base endpoint - [POST] - authorize student/tutor username + password and respond with user + token
+    // 'auth' base endpoint - [GET/POST] - token authorization and authentication
     if (!isset($endpoint[1]) || $endpoint[1] == '?' || $endpoint[1] == '#' || $endpoint[1] == '/') {
-        // only allow posts
-        if ($method != 'post')
+        // only allow posts and gets
+        if ($method != 'post' && $method != 'get')
             emit(405, [ 'message' => 'Please use `api/auth` with POST' ]);
 
-        // check username and password validity
-        $username = @$_POST['username'];
-        if (!isset($username) || !is_string($username) || !ctype_alnum($username))
-            emit(500, [ 'message' => 'Invalid Username']);
-        $username = strtolower($username);
-        $password = @$_POST['password'];
-        if (!isset($password) || !is_string($password) || !ctype_alnum($password))
-            emit(500, [ 'message' => 'Invalid Password']);
+        // [POST] authorize student/tutor username + password and respond with user + token
+        if ($method == 'post') {
+            // check username and password validity
+            $username = @$_POST['username'];
+            if (!isset($username) || !is_string($username) || !ctype_alnum($username))
+                emit(500, [ 'message' => 'Invalid Username']);
+            $username = strtolower($username);
+            $password = @$_POST['password'];
+            if (!isset($password) || !is_string($password) || !ctype_alnum($password))
+                emit(500, [ 'message' => 'Invalid Password']);
 
-        // function to run on success
-        $succeed = function ($id, $username, $fullname) {
-            emit(true, [
-                'token' => createToken($id, $username),
-                'data' => [
-                    'id' => $id,
-                    'username' => $username,
-                    'fullname' => $fullname
-                ]
-            ]);
-        };
+            // function to run on success
+            $succeed = function ($id, $username, $fullname) {
+                emit(true, [
+                    'token' => createToken($id, $username),
+                    'data' => [
+                        'id' => $id,
+                        'username' => $username,
+                        'fullname' => $fullname
+                    ]
+                ]);
+            };
 
-        // check username and password against database
-        $password = hash2($password);
-        // check students table and succeed
-        $user = $db->get('students', [ 'username' => $username, 'password' => $password ], [ 'id', 'username', 'fullname' ]);
-        if ($user != false) $succeed($user['id'], $user['username'], $user['fullname']);
-        // check tutors table and succeed
-        else $user = $db->get('tutors', [ 'username' => $username, 'password' => $password ], [ 'id', 'username', 'fullname' ]);
-        if ($user != false) $succeed($user['id'], $user['username'], $user['fullname']);
-        // fail if username or password not found in either table
-        else emit(401, [ 'message' => 'Username/password not found' ]);
+            // check username and password against database
+            $password = hash2($password);
+            // check students table and succeed
+            $user = $db->get('students', [ 'username' => $username, 'password' => $password ], [ 'id', 'username', 'fullname' ]);
+            if ($user != false) $succeed($user['id'], $user['username'], $user['fullname']);
+            // check tutors table and succeed
+            else $user = $db->get('tutors', [ 'username' => $username, 'password' => $password ], [ 'id', 'username', 'fullname' ]);
+            if ($user != false) $succeed($user['id'], $user['username'], $user['fullname']);
+            // fail if username or password not found in either table
+            else emit(401, [ 'message' => 'Username/password not found' ]);
+        }
+        // [GET] authenticate token and respond with user
+        elseif ($method == 'get') {
+            // authenticate
+            $token = authenticate();
+            // check students table for user
+            $user = $db->get('students', [ 'id' => $token['id'], 'username' => $token['username'] ], [ 'id', 'username', 'fullname' ]);
+            // check tutors table for user
+            if ($user == false || $user == null)
+                $user = $db->get('tutors', [ 'id' => $token['id'], 'username' => $token['username'] ], [ 'id', 'username', 'fullname' ]);
+            // if user found, send data
+            if ($user != false) emit(true, $user);
+            // fail if username not found in either table
+            else emit(401, [ 'message' => 'Username/password not found' ]);
+        }
     }
-    // api/auth/* unknown endpoint - invalid endpoint - respond with 404 error
+    // 'auth/:*' wildcard endpoint - unknown/invalid - respond with 404
     else emit(404, [ 'message' => 'Please use `api/auth`' ]);
 }
-// api/students endpoint - manage students
+// 'api/students' endpoint - manage students
 elseif ($endpoint[0] == 'students') {
-    // api/students/ base endpoint - invalid endpoint - respond with 404 error
+    // 'api/students' base endpoint - invalid - respond with 404
     if (!isset($endpoint[1]) || $endpoint[1] == '?' || $endpoint[1] == '#' || $endpoint[1] == '/')
         emit(404, [ 'message' => 'Please use `api/students/create` or `api/students/:student_id`' ]);
-    // api/students/create endpoint - [POST] - create new student user and respond with student + token
+    // 'api/students/create' endpoint - [POST] - create new student and respond with student + token
     elseif ($endpoint[1] == 'create') {
         // only allow posts
         if ($method != 'post')
@@ -135,7 +146,7 @@ elseif ($endpoint[0] == 'students') {
             ]
         ]);
     }
-    // api/students/:student_id endpoint - [GET/POST][AUTH] - manage student
+    // 'api/students/:student_id' endpoint - [GET][AUTH] - respond with student
     else {
         // authenticate
         $token = authenticate();
@@ -148,26 +159,21 @@ elseif ($endpoint[0] == 'students') {
         if ($student == null || $student == false || !is_array($student))
             emit(500, [ 'message' => 'Student not found']);
 
-        // placeholder
-        if (false) { }
-        // api/students/:student_id  endpoint - [GET][AUTH] - respond with student
-        else {
-            // only allow gets
-            if ($method != 'get')
-                emit(405, [ 'message' => 'Please use `api/students/:student_id` with GET' ]);
+        // only allow gets
+        if ($method != 'get')
+            emit(405, [ 'message' => 'Please use `api/students/:student_id` with GET' ]);
 
-            // respond with user data
-            emit(true, [
-                'id' => $student['id'],
-                'username' => $student['username'],
-                'fullname' => $student['fullname']
-            ]);
-        }
+        // respond with user data
+        emit(true, [
+            'id' => $student['id'],
+            'username' => $student['username'],
+            'fullname' => $student['fullname']
+        ]);
     }
 }
-// api/tutors endpoint - manage tutors
+// 'api/tutors' endpoint - manage tutors
 elseif($endpoint[0] == 'tutors') {
-    // api/tutors/ base endpoint - [GET][AUTH] - respond with tutors based on location and subject
+    // 'api/tutors' base endpoint - [GET][AUTH] - respond with tutors based on location and subject
     if (!isset($endpoint[1]) || $endpoint[1] == '?' || $endpoint[1] == '#' || $endpoint[1] == '/') {
         // authenticate
         authenticate();
@@ -180,9 +186,23 @@ elseif($endpoint[0] == 'tutors') {
         $lat = @$_GET['lat'];
         if (!isset($lat) || !is_string($lat) || !is_numeric($lat) || floatval($lat) > 90 || floatval($lat) < -90)
             emit(500, [ 'message' => 'Invalid latitude' ]);
+        $lat = floatval($lat);
         $long = @$_GET['long'];
         if (!isset($long) || !is_string($long) || !is_numeric($long) || floatval($long) > 180 || floatval($long) < -180)
             emit(500, [ 'message' => 'Invalid longitude' ]);
+        $long = floatval($long);
+        $range = @$_GET['range'];
+        if (!isset($range) || !is_string($range) || !is_numeric($range))
+            $range = 0.0001;
+        $range = floatval($range);
+        $latrange = @$_GET['latrange'];
+        if (!isset($latrange) || !is_string($latrange) || !is_numeric($latrange))
+            $latrange = $range;
+        $latrange = floatval($latrange);
+        $longrange = @$_GET['longrange'];
+        if (!isset($longrange) || !is_string($longrange) || !is_numeric($longrange))
+            $longrange = $range;
+        $longrange = floatval($longrange);
         $subjects = @$_GET['subjects'];
         if (!isset($subjects) || !is_string($subjects) || strlen($subjects) > 200)
             emit(500, [ 'message' => 'Invalid subjects' ]);
@@ -192,12 +212,12 @@ elseif($endpoint[0] == 'tutors') {
         $tutors = $db->get('tutors', [
             'latitude' => [
                 'condition' => 'between ? and ?',
-                'expected' => [ $lat - 0.0001, $lat + 0.0001 ],
+                'expected' => [ $lat - $latrange, $lat + $latrange ],
                 'nextOperator' => 'AND'
             ],
             'longitude' => [
                 'condition' => 'between ? and ?',
-                'expected' => [ $long - 0.0001, $long + 0.0001 ],
+                'expected' => [ $long - $longrange, $long + $longrange ],
             ]
         ]);
 
@@ -215,7 +235,7 @@ elseif($endpoint[0] == 'tutors') {
         foreach ($tutors as $j => $tutor) {
             $tutorSubjects = explode(',', $tutor['subjects']);
             foreach ($tutorSubjects as $k => $tutorSubject) {
-                if (in_array($tutorSubject, $subjects)) {
+                if ($subjects[0] == 'all' || in_array($tutorSubject, $subjects)) {
                     array_push($modTutors, [
                         'id' => $tutor['id'],
                         'username' => $tutor['username'],
@@ -223,7 +243,8 @@ elseif($endpoint[0] == 'tutors') {
                         'school' => $tutor['school'],
                         'bio' => $tutor['bio'],
                         'subjects' => $tutor['subjects'],
-                        'stars' => $tutor['stars'],
+                        'city' => $tutor['city'],
+                        'stars' => ($tutor['stars'] > 5 ? 'null' : $tutor['stars']),
                         'hours' => $tutor['hours'],
                         'location' => [
                             (isset($tutor['latitude']) ? $tutor['latitude'] : 'null'),
@@ -237,7 +258,7 @@ elseif($endpoint[0] == 'tutors') {
 
         emit(true, $modTutors);
     }
-    // api/tutors/create endpoint - [POST] - create new tutor user and respond with tutor + token
+    // 'api/tutors/create' endpoint - [POST] - create new tutor user and respond with tutor + token
     elseif ($endpoint[1] == 'create') {
         // only allow posts
         if ($method != 'post')
@@ -263,6 +284,9 @@ elseif($endpoint[0] == 'tutors') {
         $subjects = @$_POST['subjects'];
         if (!isset($subjects) || !is_string($subjects) || !ctype_alnum(str_replace([ ' ', '-', '.', ',', '(', ')' ], '', $subjects)))
             emit(500, [ 'message' => 'Invalid Subjects']);
+        $city = @$_POST['city'];
+        if (!isset($city) || !is_string($city) || !ctype_alnum(str_replace([ ' ', '-', '.', ',' ], '', $city)))
+            emit(500, [ 'message' => 'Invalid City']);
 
         // add user to database
         $password = hash2($password);
@@ -284,9 +308,10 @@ elseif($endpoint[0] == 'tutors') {
                 'type' => 'text(400)'
             ],
             'subjects' => $subjects,
+            'city' => $city,
             'stars' => [
-                'val' => 0,
-                'type' => 'integer'
+                'val' => 10,
+                'type' => 'double'
             ],
             'hours' => [
                 'val' => 0,
@@ -314,13 +339,14 @@ elseif($endpoint[0] == 'tutors') {
                 'school' => $school,
                 'bio' => $bio,
                 'subjects' => $subjects,
-                'stars' => 0,
+                'stars' => 'null',
                 'hours' => 0,
+                'city' => $city,
                 'location' => [ 'null', 'null' ]
             ]
         ]);
     }
-    // api/tutors/:tutor_id endpoint - [GET/POST][AUTH] - manage tutor data
+    // 'api/tutors/:tutor_id' endpoint - manage tutor
     else {
         // authenticate
         $token = authenticate();
@@ -333,9 +359,9 @@ elseif($endpoint[0] == 'tutors') {
         if ($tutor == null || $tutor == false || !is_array($tutor))
             emit(500, [ 'message' => 'Tutor not found']);
 
-        // api/tutors/:tutor_id/reviews endpoint - [GET/POST][AUTH] - manage tutor reviews
+        // 'api/tutors/:tutor_id/reviews' endpoint - manage tutor reviews
         if (@$endpoint[2] == 'reviews') {
-            // api/tutors/:tutor_id/reviews/ base endpoint - [GET][AUTH] - respond with tutor reviews
+            // 'api/tutors/:tutor_id/reviews' base endpoint - [GET][AUTH] - respond with tutor reviews
             if (!isset($endpoint[3]) || $endpoint[3] == '?' || $endpoint[3] == '#' || $endpoint[3] == '/') {
                 // only allow gets
                 if ($method != 'get')
@@ -350,7 +376,7 @@ elseif($endpoint[0] == 'tutors') {
                     emit(true, [ $reviews ]);
                 } else emit(true, $reviews);
             }
-            // api/tutors/:tutor_id/reviews/create endpoint - [POST][AUTH] - create review for tutor
+            // 'api/tutors/:tutor_id/reviews/create' endpoint - [POST][AUTH] - create review for tutor
             elseif ($endpoint[3] == 'create') {
                 // only allow posts
                 if ($method != 'post')
@@ -361,9 +387,9 @@ elseif($endpoint[0] == 'tutors') {
                 if (!isset($from) || !is_string($from) || !ctype_alnum($from))
                     emit(500, [ 'message' => 'Invalid "from" user id']);
                 $stars = @$_POST['stars'];
-                if (!isset($stars) || !is_numeric($stars))
+                if (!isset($stars) || !is_numeric($stars) || floatval($stars) > 5 || floatval($stars) < 0)
                     emit(500, [ 'message' => 'Invalid stars']);
-                else $stars = intval($stars);
+                else $stars = floatval($stars);
                 $text = @$_POST['text'];
                 if (!isset($text) || !is_string($text) /*|| !ctype_alnum(str_replace([ ' ', '-', '.', ',', '(', ')', ';', ':', "'", '"', '!', '?' ], '', $text))*/)
                     emit(500, [ 'message' => 'Invalid text']);
@@ -372,6 +398,35 @@ elseif($endpoint[0] == 'tutors') {
                 $fromUser = $db->get('students', $from);
                 if ($fromUser === false || $fromUser == null)
                     emit(500, [ 'message' => '"From" user not found' ]);
+
+                // average stars
+                $newstars = $stars;
+                $oldstars = $tutor['stars'];
+                $totalreviews = $db->get('reviews', [
+                    'forTutor' => $id
+                ], [ 'stars' ]);
+                if ($totalreviews === false)
+                    emit(500, [ 'message' => 'Could not calculate star average' ]);
+                if ($totalreviews <= 0)
+                    $db->set('tutors', $id, [ 'stars' => $stars ]);
+                else {
+                    if ($oldstars === 'null' || floatval($oldstars) > 5) {
+                        foreach ($totalreviews as $i => $pastreview) {
+                            if (is_array($pastreview) && isset($pastreview['stars']) && is_numeric($pastreview['stars']))
+                                $newstars += floatval($pastreview['stars']);
+                            elseif (is_numeric($pastreview))
+                                $newstars += floatval($pastreview);
+                        }
+                    } else $newstars += floatval($oldstars) * count($totalreviews);
+                    $newstars /= count($totalreviews) + 1;
+                    if ($db->set('tutors', $id, [
+                        'stars' => [
+                            'val' => $newstars,
+                            'type' => 'd'
+                        ]
+                    ]) === false)
+                        emit(500, [ 'message' => 'Could not set star average in database' . $db->error() ]);
+                }
 
                 // push review to database
                 $review = $db->push('reviews', [
@@ -397,7 +452,7 @@ elseif($endpoint[0] == 'tutors') {
                     'text' => $text
                 ]);
             }
-            // api/tutors/:tutor_id/reviews/:review_id endpoint - [GET][AUTH] - respond with review
+            // 'api/tutors/:tutor_id/reviews/:review_id' endpoint - [GET][AUTH] - respond with review
             else {
                 // only allow gets
                 if ($method != 'get')
@@ -414,13 +469,13 @@ elseif($endpoint[0] == 'tutors') {
                 else emit(true, [ $review ]);
             }
         }
-        // api/tutors/:tutor_id/hours endpoint - [GET/POST][AUTH] - manage tutor hours
+        // 'api/tutors/:tutor_id/hours' endpoint - [GET/POST][AUTH] - manage tutor hours
         elseif (@$endpoint[2] == 'hours') {
             // only allow gets/posts
             if ($method != 'post' && $method != 'get')
                 emit(405, [ 'message' => 'Please use `api/tutors/:tutor_id/location` with GET/POST' ]);
 
-            // for posts, set tutor hours
+            // [POST] set tutor hours
             if ($method == 'post') {
                 // check user authenticity (if user ID in token matches tutor ID)
                 if ($id != $token['id'])
@@ -455,7 +510,7 @@ elseif($endpoint[0] == 'tutors') {
                     'hours' => $hours
                 ]);
             }
-            // for gets, get tutor hours
+            // [GET] get tutor hours
             else if ($method == 'get') {
                 $hours = $tutor['hours'];
 
@@ -465,13 +520,13 @@ elseif($endpoint[0] == 'tutors') {
                 ]);
             }
         }
-        // api/tutor/:tutor_id/location endpoint - [GET/POST][AUTH] - manage session location
+        // 'api/tutor/:tutor_id/location' endpoint - [GET/POST][AUTH] - manage session location
         if (@$endpoint[2] == 'location') {
             // only allow gets/posts
             if ($method != 'post' && $method != 'get')
                 emit(405, [ 'message' => 'Please use `api/tutor/:tutor_id/location` with GET/POST' ]);
 
-            // for posts, set tutor location
+            // [POST] set tutor location
             if ($method == 'post') {
                 // check user authenticity (if user ID in token matches tutor ID)
                 if ($id != $token['id'])
@@ -506,7 +561,7 @@ elseif($endpoint[0] == 'tutors') {
                     'long' => $long
                 ]);
             }
-            // for gets, get tutor location
+            // [GET] get tutor location
             else if ($method == 'get') {
                 $lat = @$session['latitude'];
                 $long = @$session['longitude'];
@@ -522,7 +577,7 @@ elseif($endpoint[0] == 'tutors') {
                 ]);
             }
         }
-        // api/tutors/:tutor_id endpoint - [GET][AUTH] - respond with tutor
+        // 'api/tutors/:tutor_id' endpoint - [GET][AUTH] - respond with tutor
         else {
             // only allow gets
             if ($method != 'get')
@@ -536,7 +591,8 @@ elseif($endpoint[0] == 'tutors') {
                 'school' => $tutor['school'],
                 'bio' => $tutor['bio'],
                 'subjects' => $tutor['subjects'],
-                'stars' => $tutor['stars'],
+                'city' => $tutor['city'],
+                'stars' => ($tutor['stars'] > 5 ? 'null' : $tutor['stars']),
                 'hours' => $tutor['hours'],
                 'location' => [
                     (isset($tutor['latitude']) ? $tutor['latitude'] : 'null'),
@@ -551,10 +607,10 @@ elseif($endpoint[0] == 'sessions') {
     // authenticate
     $token = authenticate();
 
-    // api/sessions/ base endpoint - invalid endpoint - respond with 404 error
+    // 'api/sessions' base endpoint - invalid - respond with 404
     if (!isset($endpoint[1]) || $endpoint[1] == '?' || $endpoint[1] == '#' || $endpoint[1] == '/')
         emit(404, [ 'message' => 'Please use `api/sessions/create` or `api/sessions/:session_id`' ]);
-    // api/sessions/create endpoint - [POST][AUTH] - create new session and respond with session
+    // 'api/sessions/create' endpoint - [POST][AUTH] - create new session and respond with session
     elseif ($endpoint[1] == 'create') {
         // only allow gets
         if ($method != 'post')
@@ -614,7 +670,7 @@ elseif($endpoint[0] == 'sessions') {
             'state' => 'pending'
         ]);
     }
-    // api/sessions/:session_id endpoint - [GET][AUTH] - manage session
+    // 'api/sessions/:session_id' endpoint - manage session
     else {
         // validate and check for id in database
         $id = $endpoint[1];
@@ -624,13 +680,13 @@ elseif($endpoint[0] == 'sessions') {
         if ($session == null || $session == false || !is_array($session))
             emit(500, [ 'message' => 'Session not found']);
 
-        // api/sessions/:session_id/location endpoint - [GET/POST][AUTH] - manage session location
+        // 'api/sessions/:session_id/location' endpoint - [GET/POST][AUTH] - manage session location
         if (@$endpoint[2] == 'location') {
             // only allow gets/posts
             if ($method != 'post' && $method != 'get')
                 emit(405, [ 'message' => 'Please use `api/sessions/:session_id/location` with GET/POST' ]);
 
-            // for posts, set session location
+            // [POST] set session location
             if ($method == 'post') {
                 // check user authenticity (if user ID in token matches session student ID)
                 if ($session['student'] != $token['id'])
@@ -665,7 +721,7 @@ elseif($endpoint[0] == 'sessions') {
                     'long' => $long
                 ]);
             }
-            // for gets, get session location
+            // [GET] get session location
             else if ($method == 'get') {
                 // check user authenticity (if user ID in token matches session student/tutor ID)
                 if ($token['id'] != $session['student'] || $token['id'] != $session['tutor'])
@@ -685,13 +741,13 @@ elseif($endpoint[0] == 'sessions') {
                 ]);
             }
         }
-        // api/sessions/:session_id/state endpoint - [GET/POST][AUTH] - manage session state
+        // 'api/sessions/:session_id/state' endpoint - [GET/POST][AUTH] - manage session state
         elseif (@$endpoint[2] == 'state') {
             // only allow gets/posts
             if ($method != 'post' && $method != 'get')
                 emit(405, [ 'message' => 'Please use `api/students/:student_id/location` with GET/POST' ]);
 
-            // for posts, set session state
+            // [POST] set session state
             if ($method == 'post') {
                 // check action validity based on user and current state
                 $action = @$_POST['action'];
@@ -733,7 +789,7 @@ elseif($endpoint[0] == 'sessions') {
                     'state' => $action . $suffix
                 ]);
             }
-            // for gets, get session state
+            // [GET] get session state
             else if ($method == 'get') {
                 // check user authenticity (if user ID in token matches session student/tutor ID)
                 if ($token['id'] != $session['student'] && $token['id'] != $session['tutor'])
@@ -745,7 +801,7 @@ elseif($endpoint[0] == 'sessions') {
                 ]);
             }
         }
-        // api/sessions/:session_id endpoint - [GET][AUTH] - respond with session
+        // 'api/sessions/:session_id' endpoint - [GET][AUTH] - respond with session
         else {
             // only allow gets
             if ($method != 'get')
@@ -772,7 +828,7 @@ elseif($endpoint[0] == 'sessions') {
         }
     }
 }
-// api/* unknown endpoint - invalid endpoint - respond with 404 error
+// 'api/:*' wildcard endpoint - unknown/invalid - respond with 404
 else emit(404, [ 'message' => 'Server endpoint not found' ]);
 
 
@@ -780,7 +836,8 @@ else emit(404, [ 'message' => 'Server endpoint not found' ]);
 
 // function for responding to/closing request
 function emit($code, $data) {
-    global $endpoint;
+    global $endpoint, $db;
+    $db->disconnect();
     if ($code !== true && is_int($code)) {
         $data['uri'] = implode('/', $endpoint);
         http_response_code($code);
