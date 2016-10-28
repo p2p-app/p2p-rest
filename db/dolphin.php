@@ -67,6 +67,7 @@ class Dolphin {
 
         // check if each column exists
         $updates = '';
+        $typeUpdates = '';
         if (!$nullData) {
             $newColumns = '';
             foreach ($data as $attribute => $value) {
@@ -78,11 +79,12 @@ class Dolphin {
                     else $type = $value['type'];
                     if (!isset($value['val']))
                         return $this->fail('Invalid value val format');
-                    else $value = $db->real_escape_string($value['val']);
+                    // else $value = $db->real_escape_string($value['val']);
+                    $data[$attribute] = $value['val'];
                 }
-                if (is_string($value))
-                    $data[$attribute] = $db->real_escape_string($value);
-                else return $this->fail('Invalid value format');
+                // if (is_string($value))
+                //     $data[$attribute] = $db->real_escape_string($value);
+                // else return $this->fail('Invalid value format');
                 if (!$sql = $db->prepare("SHOW COLUMNS FROM `$table` LIKE '$attribute'"))
                     return $this->fail("Could not prepare statement [$db->error]");
                 if (!$sql->execute())
@@ -94,6 +96,9 @@ class Dolphin {
                 if ($num_rows <= 0) $newColumns .= "ADD COLUMN `$attribute` $type, ";
                 // prepare update attributes to use later
                 $updates .= ",$attribute=?";
+                if (is_int($value)) $typeUpdates .= 'i';
+                elseif (is_double($value) || is_float($value)) $typeUpdates .= 'd';
+                else $typeUpdates .= 's';
             }
             // add missing columns to table
             if (strlen($newColumns) > 1) {
@@ -125,7 +130,7 @@ class Dolphin {
         // add values to table if given
         if (!$nullData && strlen($updates) > 0) {
             $updates = substr($updates, 1);
-            $types = str_pad('', count($data) + 1, 's');
+            $types = $typeUpdates . 's';
             $bind_params = array_merge([$types], array_values($data), [$child]);
             for ($i = 0; $i < count($bind_params); $i++)
                 $bind_params[$i] = &$bind_params[$i];

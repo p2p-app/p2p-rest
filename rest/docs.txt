@@ -148,7 +148,8 @@ api
                             id,
                             from,
                             stars,
-                            text
+                            text,
+                            created(ISO8601_date)
                         }
             hours
                 POST AUTH

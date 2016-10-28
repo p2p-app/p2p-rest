@@ -206,7 +206,7 @@ elseif($endpoint[0] == 'tutors') {
         $subjects = @$_GET['subjects'];
         if (!isset($subjects) || !is_string($subjects) || strlen($subjects) > 200)
             emit(500, [ 'message' => 'Invalid subjects' ]);
-        $subjects = explode(',', $subjects);
+        $subjects = explode(',', strtolower($subjects));
 
         // get tutors with db condition of lat/long
         $tutors = $db->get('tutors', [
@@ -284,6 +284,7 @@ elseif($endpoint[0] == 'tutors') {
         $subjects = @$_POST['subjects'];
         if (!isset($subjects) || !is_string($subjects) || !ctype_alnum(str_replace([ ' ', '-', '.', ',', '(', ')' ], '', $subjects)))
             emit(500, [ 'message' => 'Invalid Subjects']);
+        $subjects = strtolower($subjects);
         $city = @$_POST['city'];
         if (!isset($city) || !is_string($city) || !ctype_alnum(str_replace([ ' ', '-', '.', ',' ], '', $city)))
             emit(500, [ 'message' => 'Invalid City']);
@@ -372,9 +373,19 @@ elseif($endpoint[0] == 'tutors') {
                     emit(500, [ 'message' => 'Error while fetching reviews' ]);
                 elseif ($reviews == null || count($reviews) == 0)
                     emit(true, [ ]);
-                elseif (array_keys($reviews) !== range(0, count($reviews) - 1)) {
-                    emit(true, [ $reviews ]);
-                } else emit(true, $reviews);
+
+                if (array_keys($reviews) !== range(0, count($reviews) - 1))
+                    $reviews = [ $reviews ];
+                foreach ($reviews as $l => $review)
+                    $reviews[$l] = [
+                        'id' => $review['id'],
+                        'from' => $review['fromStudent'],
+                        'stars' => $review['stars'],
+                        'text' => $review['reviewText'],
+                        'created' => date(DateTime::ISO8601, $review['created'])
+                    ];
+
+                emit(true, $reviews);
             }
             // 'reviews/create' endpoint - [POST][AUTH] - create review for tutor
             elseif ($endpoint[3] == 'create') {
@@ -393,6 +404,7 @@ elseif($endpoint[0] == 'tutors') {
                 $text = @$_POST['text'];
                 if (!isset($text) || !is_string($text) /*|| !ctype_alnum(str_replace([ ' ', '-', '.', ',', '(', ')', ';', ':', "'", '"', '!', '?' ], '', $text))*/)
                     emit(500, [ 'message' => 'Invalid text']);
+                $created = time();
 
                 // check for "from" user in database
                 $fromUser = $db->get('students', $from);
@@ -420,10 +432,7 @@ elseif($endpoint[0] == 'tutors') {
                     } else $newstars += floatval($oldstars) * count($totalreviews);
                     $newstars /= count($totalreviews) + 1;
                     if ($db->set('tutors', $id, [
-                        'stars' => [
-                            'val' => $newstars,
-                            'type' => 'd'
-                        ]
+                        'stars' => $newstars
                     ]) === false)
                         emit(500, [ 'message' => 'Could not set star average in database' . $db->error() ]);
                 }
@@ -439,17 +448,22 @@ elseif($endpoint[0] == 'tutors') {
                     'reviewText' => [
                         'val' => $text,
                         'type' => 'text'
+                    ],
+                    'created' => [
+                        'val' => $created,
+                        'type' => 'integer'
                     ]
                 ]);
                 // check if push failed
                 if ($review === false)
-                    emit(500, [ 'message' => 'Error while creating review' ]);
+                    emit(500, [ 'message' => 'Error while creating review' . $db->error() ]);
                 // succeed with review data
                 else emit(true, [
                     'id' => $review,
                     'from' => $from,
                     'stars' => $stars,
-                    'text' => $text
+                    'text' => $text,
+                    'created' => date(DateTime::ISO8601, $created)
                 ]);
             }
             // 'reviews/:review_id' endpoint - [GET][AUTH] - respond with review
@@ -470,7 +484,8 @@ elseif($endpoint[0] == 'tutors') {
                     'id' => $review['id'],
                     'from' => $review['fromStudent'],
                     'stars' => $review['stars'],
-                    'text' => $review['reviewText']
+                    'text' => $review['reviewText'],
+                    'created' => date(DateTime::ISO8601, $review['created'])
                 ]);
             }
         }
@@ -596,7 +611,7 @@ elseif($endpoint[0] == 'tutors') {
                 'school' => $tutor['school'],
                 'bio' => $tutor['bio'],
                 'subjects' => $tutor['subjects'],
-                'city' => $tutor['city'],
+                'city' => (!isset($tutor['city']) ? 'null' : $tutor['city']),
                 'stars' => ($tutor['stars'] > 5 ? 'null' : $tutor['stars']),
                 'hours' => $tutor['hours'],
                 'location' => [
