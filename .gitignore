@@ -1,2 +1,8 @@
+# .gitignore
+
+# OS trash
 .DS_Store
+[Tt]humbs.db
+
+# composer
 vendor
