@@ -22,21 +22,21 @@ api
             }
             Returns: {
                 token,
-                type,
                 data: {
-            	   id,
-                   username,
-                   fullname
+                    id,
+                    username,
+                    fullname,
+                    type
                }
             }
         GET AUTH
         	Body: (null)
         	Returns: {
-                type,
                 data: {
                 	id,
                     username,
-                    fullname
+                    fullname,
+                    type
                 }
             }
     students
@@ -52,7 +52,8 @@ api
             	   id,
                    username,
                    fullname,
-                   profile
+                   profile=null,
+                   type=student
                }
             }
         :student_id
@@ -62,7 +63,8 @@ api
             	   id,
                    username,
                    fullname,
-                   profile
+                   profile,
+                   type=student
                }
     tutors
     	GET AUTH
@@ -104,7 +106,8 @@ api
         					lat(float/null),
                             long(float/null)
         				],
-                        profile
+                        profile=null,
+                        type=tutor
         			}
                 }
 		:tutor_id
@@ -124,7 +127,8 @@ api
                         lat(float/null),
                         long(float/null)
                     ],
-                    profile
+                    profile,
+                    type=tutor
                 }
     		reviews
     			GET AUTH

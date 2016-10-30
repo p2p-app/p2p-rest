@@ -78,7 +78,9 @@ $api['tutors'] = [
                         'location' => [
                             (isset($tutor['latitude']) ? $tutor['latitude'] : 'null'),
                             (isset($tutor['longitude']) ? $tutor['longitude'] : 'null')
-                        ]
+                        ],
+                        'profile' => $tutor['profile'],
+                        'type' => 'tutor'
                     ]);
                     break;
                 }
@@ -180,7 +182,8 @@ $api['tutors'] = [
                     'hours' => 0,
                     'city' => $city,
                     'location' => [ 'null', 'null' ],
-                    'profile' => 'null'
+                    'profile' => 'null',
+                    'type' => 'tutor'
                 ]
             ] ];
         }
@@ -226,7 +229,8 @@ $api['tutors'] = [
                     (isset($tutor['latitude']) && !(floatval($tutor['latitude']) > 199) ? floatval($tutor['latitude']) : 'null'),
                     (isset($tutor['longitude']) && !(floatval($tutor['longitude']) > 199) ? floatval($tutor['longitude']) : 'null')
                 ],
-                'profile' => $profile
+                'profile' => $profile,
+                'type' => 'tutor'
             ] ];
         },
         // reviews - manage tutor reviews

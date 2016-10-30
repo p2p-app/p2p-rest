@@ -14,18 +14,12 @@ $api['auth'] = [
         // search students table for user
         $data = rest($api, 'students/' . $token['id'], 'get', [ ]);
         // if student found or error ocurred, respond
-        if ($data[0] === true) return [ true, [
-            'type' => 'student',
-            'data' => $data[1]
-        ] ];
+        if ($data[0] === true) return [ true, $data[1] ];
         elseif ($data[0] != HTTP_NOT_FOUND) return $data;
         // if student not found, search tutors table
         $data = rest($api, 'tutors/' . $token['id'], 'get', [ ]);
         // if tutor found or error ocurred, respond
-        if ($data[0] === true) return [ true, [
-            'type' => 'tutor',
-            'data' => $data[1]
-        ] ];
+        if ($data[0] === true) return [ true, $data[1] ];
         elseif ($data[0] != HTTP_NOT_FOUND) return $data;
         // if student/tutor not found respond with failure
         return [ HTTP_NOT_FOUND, 'User not found' ];
@@ -48,7 +42,7 @@ $api['auth'] = [
         $user = $db->get('students', [
             'username' => $username,
             'password' => $password
-        ], [ 'id', 'username', 'fullname' ]);
+        ], [ 'id', 'username' ]);
         if ($user === false)
             return [ HTTP_INTERNAL_SERVER_ERROR, 'Error while searching for student' ];
         // if student not found
@@ -58,7 +52,7 @@ $api['auth'] = [
             $user = $db->get('tutors', [
                 'username' => $username,
                 'password' => $password
-            ], [ 'id', 'username', 'fullname' ]);
+            ], [ 'id', 'username' ]);
             if ($user === false)
                 return [ HTTP_INTERNAL_SERVER_ERROR, 'Error while searching for tutor' ];
         }
@@ -66,15 +60,18 @@ $api['auth'] = [
         // fail if username or password not found in either table
         if ($user == null) return [ HTTP_NOT_FOUND, 'User not found' ];
 
+        // get full user data
+        $old_auth = @$_SERVER['HTTP_AUTHORIZATION'];
+        $token = createToken($user['id'], $user['username']);
+        $_SERVER['HTTP_AUTHORIZATION'] = $token;
+        $fullUser = rest($api, 'auth', 'get', [ ]);
+        $_SERVER['HTTP_AUTHORIZATION'] = @$old_auth;
+        if ($fullUser[0] != true) return $fullUser;
+
         // respond with token and user data
         return [ true, [
-            'token' => createToken($user['id'], $user['username']),
-            'type' => $type,
-            'data' => [
-                'id' => $user['id'],
-                'username' => $user['username'],
-                'fullname' => $user['fullname']
-            ]
+            'token' => $token,
+            'data' => $fullUser[1]
         ]];
     }
 ];

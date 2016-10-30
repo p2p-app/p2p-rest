@@ -56,7 +56,8 @@ $api['students'] = [
                     'id' => $new_student_id,
                     'username' => $username,
                     'fullname' => $fullname,
-                    'profile' => 'null'
+                    'profile' => 'null',
+                    'type' => 'student'
                 ]
             ] ];
         }
@@ -93,7 +94,8 @@ $api['students'] = [
                 'id' => $student['id'],
                 'username' => $student['username'],
                 'fullname' => $student['fullname'],
-                'profile' => $profile
+                'profile' => $profile,
+                'type' => 'student'
             ] ];
         }
     ]
