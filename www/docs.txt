@@ -46,7 +46,7 @@ api
             }
     		Returns: {
                 token,
-                data: {
+                data: (student_object){
             	   id,
                    username,
                    fullname
@@ -55,7 +55,7 @@ api
         :student_id
             GET AUTH
             	Body: (null)
-            	Returns: {
+            	Returns: (student_object){
             	   id,
                    username,
                    fullname
@@ -86,7 +86,7 @@ api
                 }
     			Returns: {
                     token,
-                    data: {
+                    data: (tutor_object){
         				id,
                         username,
                         fullname,
@@ -105,7 +105,7 @@ api
 		:tutor_id
 			GET AUTH
     			Body: (null)
-                Returns: {
+                Returns: (tutor_object){
                     id,
                     username,
                     fullname,
@@ -135,16 +135,17 @@ api
                             stars(float),
                             text
                         }
-        				Returns: {
+        				Returns: (review_object){
                             id,
                             from,
                             stars,
-                            text
+                            text,
+                            created(ISO8601_date)
                         }
                 :review_id
                     GET AUTH
                         Body: (null)
-                        Returns: {
+                        Returns: (review_object){
                             id,
                             from,
                             stars,
@@ -190,7 +191,7 @@ api
                         lat(-90 < float < 90),
                         long(-180 < float < 180)
                     }
-                    Returns: {
+                    Returns: (session_object){
                         id,
                         student,
                         tutor,
@@ -198,20 +199,20 @@ api
                             lat(float),
                             long(float)
                         ],
-                        created(ISO8601_date)
+                        created(ISO8601_date),
                         state="pending"
                     }
             :session_id
                 GET AUTH (only student or tutor from session)
                     Body: (null)
-                    Returns: {
+                    Returns: (session_object){
                         id,
                         location: [
                             lat(float),
                             long(float)
                         ],
-                        student,
-                        tutor,
+                        student(student_object),
+                        tutor(tutor_object),
                         created(ISO8601_date),
                         state="pending"
                             or "confirmed"
