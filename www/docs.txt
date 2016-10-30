@@ -264,6 +264,7 @@ api
                         action="confirm" (only tutor from session)
                             or "commence" (only student from session)
                             or "complete" (only student from session)
+                            or "cancel"
                     }
                 GET AUTH (only student or tutor from session)
                     Body: (null)
@@ -272,4 +273,5 @@ api
                             or "confirmed"
                             or "commenced"
                             or "completed"
+                            or "cancelled"
                     }

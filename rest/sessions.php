@@ -245,7 +245,12 @@ $api['sessions'] = [
                 $token = $stateEP['__parent']['__parent']['token'];
                 // check action validity based on user and current state
                 $action = @$post['action'];
-                if (@$action == 'confirm') {
+                if (@$action == 'cancel') {
+                    // student and tutor can both cancel session at any time except completed
+                    if (@$session['state'] == 'completed')
+                        return [ HTTP_BAD_REQUEST, 'Session is in "completed" state and cannot be cancelled' ];
+                    $suffix = 'led';
+                } elseif (@$action == 'confirm') {
                     // only tutors can confirm
                     // check user authenticity (if user ID in token matches session tutor ID)
                     if ($session['tutor'] != $token['id'])
