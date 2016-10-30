@@ -7,7 +7,7 @@
 */
 
 $api['tutors'] = [
-    // [GET] - respond with tutors based on location and subject
+    // [GET] get tutors based on location and subjects
     '_GET' => function ($get, $tutorsEP) use (&$api, $db) {
         // authenticate
         $token = authenticate();
@@ -38,7 +38,7 @@ $api['tutors'] = [
             return [ HTTP_BAD_REQUEST, 'Invalid Parameter: subjects' ];
         $subjects = explode(',', strtolower($subjects));
 
-        // get tutors with db condition of lat/long
+        // get tutors with DB condition of lat/long
         $tutors = $db->get('tutors', [
             'latitude' => [
                 'condition' => 'between ? and ?',
@@ -88,7 +88,7 @@ $api['tutors'] = [
         // send back data
         return [ true, $modTutors ];
     },
-    // create - create new tutors
+    // create - create new tutor
     'create' => [
         // [POST] create new tutor and respond with tutor + token
         '_POST' => function ($post, $createEP) use (&$api, $db) {
@@ -179,12 +179,13 @@ $api['tutors'] = [
                     'stars' => 'null',
                     'hours' => 0,
                     'city' => $city,
-                    'location' => [ 'null', 'null' ]
+                    'location' => [ 'null', 'null' ],
+                    'profile' => 'null'
                 ]
             ] ];
         }
     ],
-    // :tutor_id - manage individual tutors
+    // :tutor_id - manage individual tutor
     '*' => [
         '__this' => [
             // endpoint initialization
@@ -204,8 +205,12 @@ $api['tutors'] = [
                 return [ true ];
             }
         ],
+        // [GET] get tutor data by id
         '_GET' => function ($get, $wildcardEP) use (&$api, $db) {
             $tutor = $wildcardEP['tutor'];
+            $profile = 'null';
+            if (profilePicture($tutor['id']))
+                $profile = "/images/{$tutor['id']}";
             // respond with tutor data
             return [ true, [
                 'id' => $tutor['id'],
@@ -220,7 +225,8 @@ $api['tutors'] = [
                 'location' => [
                     (isset($tutor['latitude']) && !(floatval($tutor['latitude']) > 199) ? floatval($tutor['latitude']) : 'null'),
                     (isset($tutor['longitude']) && !(floatval($tutor['longitude']) > 199) ? floatval($tutor['longitude']) : 'null')
-                ]
+                ],
+                'profile' => $profile
             ] ];
         },
         // reviews - manage tutor reviews
@@ -249,9 +255,9 @@ $api['tutors'] = [
 
                 return [ true, $reviews ];
             },
-            // create - create new reviews
+            // create - create new reviews for tutor
             'create' => [
-                // [POST] - create new review for user and return review data
+                // [POST] - create new review for user and respond with review data
                 '_POST' => function ($post, $createEP) use (&$api, $db) {
                     $tutor = $createEP['__parent']['__parent']['tutor'];
                     // check data validity
@@ -331,6 +337,7 @@ $api['tutors'] = [
             // :review_id - manage individual reviews
             '*' => [
                 '__this' => [
+                    // endpoint initialization
                     '__init' => function (&$wildcardEP, $review_id) use (&$api, $db) {
                         // validate and check for id in database
                         if (!isset($review_id) || !is_string($review_id) || !ctype_alnum($review_id))
@@ -350,6 +357,7 @@ $api['tutors'] = [
                         return [ true ];
                     }
                 ],
+                // [GET] get review by id
                 '_GET' => function ($get, $wildcardEP) use (&$api, $db) {
                     $review = $wildcardEP['review'];
                     return [ true, [
@@ -364,7 +372,7 @@ $api['tutors'] = [
         ],
         // hours - manage tutor hours
         'hours' => [
-            // [GET] get hours
+            // [GET] get tutor hours
             '_GET' => function ($get, $hoursEP) use (&$api, $db) {
                 $tutor = $hoursEP['__parent']['tutor'];
                 $hours = $tutor['hours'];
@@ -373,7 +381,7 @@ $api['tutors'] = [
                     'hours' => $hours
                 ] ];
             },
-            // [POST] set/add hours and respond with updated hours
+            // [POST] update/add hours and respond with updated hours
             '_POST' => function ($post, $hoursEP) use (&$api, $db) {
                 $tutor = $hoursEP['__parent']['tutor'];
                 // check data validity
@@ -408,7 +416,7 @@ $api['tutors'] = [
         ],
         // location - manage tutor location
         'location' => [
-            // [POST] update tutor location
+            // [POST] update tutor location and respond with updated location
             '_POST' => function ($post, $locationEP) use (&$api, $db) {
                 // check user authenticity (if user ID in token matches tutor ID)
                 $tutor_id = $locationEP['__parent']['tutor']['id'];
@@ -445,6 +453,7 @@ $api['tutors'] = [
                     'long' => $long
                 ] ];
             },
+            // [GET] get tutor location
             '_GET' => function ($get, $locationEP) use (&$api, $db) {
                 $lat = @$locationEP['__parent']['tutor']['latitude'];
                 $long = @$locationEP['__parent']['tutor']['longitude'];

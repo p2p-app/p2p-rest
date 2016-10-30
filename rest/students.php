@@ -7,7 +7,7 @@
 */
 
 $api['students'] = [
-    // create - create new students
+    // create - create new student
     'create' => [
         // [POST] create new student and respond with student + token
         '_POST' => function ($post, $createEP) use (&$api, $db) {
@@ -55,12 +55,13 @@ $api['students'] = [
                 'data' => [
                     'id' => $new_student_id,
                     'username' => $username,
-                    'fullname' => $fullname
+                    'fullname' => $fullname,
+                    'profile' => 'null'
                 ]
             ] ];
         }
     ],
-    // :student_id - manage individual students
+    // :student_id - manage individual student
     '*' => [
         '__this' => [
             // endpoint initialization
@@ -81,14 +82,18 @@ $api['students'] = [
                 return [ true ];
             }
         ],
-        // [GET] get student by id
+        // [GET] get student data by id
         '_GET' => function ($get, $wildcardEP) use (&$api, $db) {
             $student = $wildcardEP['student'];
+            $profile = 'null';
+            if (profilePicture($student['id']))
+                $profile = "/images/{$student['id']}";
             // respond with student data
             return [ true, [
                 'id' => $student['id'],
                 'username' => $student['username'],
-                'fullname' => $student['fullname']
+                'fullname' => $student['fullname'],
+                'profile' => $profile
             ] ];
         }
     ]

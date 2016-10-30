@@ -22,6 +22,7 @@ api
             }
             Returns: {
                 token,
+                type,
                 data: {
             	   id,
                    username,
@@ -31,6 +32,7 @@ api
         GET AUTH
         	Body: (null)
         	Returns: {
+                type,
                 data: {
                 	id,
                     username,
@@ -49,7 +51,8 @@ api
                 data: (student_object){
             	   id,
                    username,
-                   fullname
+                   fullname,
+                   profile
                }
             }
         :student_id
@@ -58,7 +61,8 @@ api
             	Returns: (student_object){
             	   id,
                    username,
-                   fullname
+                   fullname,
+                   profile
                }
     tutors
     	GET AUTH
@@ -73,7 +77,7 @@ api
     		Returns: [
                 tutor1(tutor_object),
                 tutor2(tutor_object),
-                …
+                ...
             ]
     		create
     			Body: {
@@ -99,7 +103,8 @@ api
                         location: [
         					lat(float/null),
                             long(float/null)
-        				]
+        				],
+                        profile
         			}
                 }
 		:tutor_id
@@ -118,7 +123,8 @@ api
                     location: [
                         lat(float/null),
                         long(float/null)
-                    ]
+                    ],
+                    profile
                 }
     		reviews
     			GET AUTH
@@ -126,7 +132,7 @@ api
                         Returns: [
                             review1(review_object),
                             review2(review_object),
-                            …
+                            ...
                         ]
     			create
     				POST AUTH
@@ -183,70 +189,83 @@ api
                         long(float/null)
                     }
     sessions
-            create
-                POST AUTH
+        GET AUTH
+            Body: {
+                &studentData=false,
+                &tutorData=true
+            }
+            Returns: [
+                session1(session_object),
+                session2(session_object),
+                ...
+            ]
+        create
+            POST AUTH
+                Body: {
+                    student(student_id, alphanumeric),
+                    tutor(tutor_id, alphanumeric),
+                    lat(-90 < float < 90),
+                    long(-180 < float < 180)
+                }
+                Returns: (session_object){
+                    id,
+                    student,
+                    tutor,
+                    location: [
+                        lat(float),
+                        long(float)
+                    ],
+                    created(ISO8601_date),
+                    state="pending"
+                }
+        :session_id
+            GET AUTH (only student or tutor from session)
+                Body: {
+                    &studentData=false,
+                    &tutorData=true
+                }
+                Returns: (session_object){
+                    id,
+                    location: [
+                        lat(float),
+                        long(float)
+                    ],
+                    student(student_object (if studentData==true, else) student_id),
+                    tutor(tutor_object (if tutorData==true, else) tutor_id),
+                    created(ISO8601_date),
+                    state="pending"
+                        or "confirmed"
+                        or "commenced"
+                        or "completed"
+                }
+            location
+                POST AUTH (only student from session)
                     Body: {
-                        student(student_id, alphanumeric),
-                        tutor(tutor_id, alphanumeric),
                         lat(-90 < float < 90),
                         long(-180 < float < 180)
                     }
-                    Returns: (session_object){
-                        id,
-                        student,
-                        tutor,
-                        location: [
-                            lat(float),
-                            long(float)
-                        ],
-                        created(ISO8601_date),
-                        state="pending"
+                    Returns: {
+                        lat(float/null),
+                        long(float/null)
                     }
-            :session_id
                 GET AUTH (only student or tutor from session)
                     Body: (null)
-                    Returns: (session_object){
-                        id,
-                        location: [
-                            lat(float),
-                            long(float)
-                        ],
-                        student(student_object),
-                        tutor(tutor_object),
-                        created(ISO8601_date),
+                    Returns: {
+                        lat(float/null),
+                        long(float/null)
+                    }
+            state
+                POST AUTH (only student or tutor from session)
+                    Body: {
+                        action="confirm" (only tutor from session)
+                            or "commence" (only student from session)
+                            or "complete" (only student from session)
+                    }
+                GET AUTH (only student or tutor from session)
+                    Body: (null)
+                    Returns: {
                         state="pending"
                             or "confirmed"
                             or "commenced"
                             or "completed"
                     }
-                location
-                    POST AUTH (only student from session)
-                        Body: {
-                            lat(-90 < float < 90),
-                            long(-180 < float < 180)
-                        }
-                        Returns: {
-                            lat(float/null),
-                            long(float/null)
-                        }
-                    GET AUTH (only student or tutor from session)
-                        Body: (null)
-                        Returns: {
-                            lat(float/null),
-                            long(float/null)
-                        }
-                state
-                    POST AUTH (only student or tutor from session)
-                        Body: {
-                            action="confirm" (only tutor from session)
-                                or "commence" (only student from session)
-                                or "complete" (only student from session)
-                        }
-                    GET AUTH (only student or tutor from session)
-                        Body: (null)
-                        Returns: {
-                            state="pending"
-                                or "confirmed"
-                                or "commenced"
-                                or "completed"
-                        }

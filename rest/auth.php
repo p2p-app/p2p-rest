@@ -27,7 +27,7 @@ $api['auth'] = [
             'data' => $data[1]
         ] ];
         elseif ($data[0] != HTTP_NOT_FOUND) return $data;
-        // if tutor not found respond with failure
+        // if student/tutor not found respond with failure
         return [ HTTP_NOT_FOUND, 'User not found' ];
     },
     // [POST] authenticate student/tutor username + password and respond with user + token
