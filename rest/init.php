@@ -146,7 +146,7 @@ function rest($endpoint, $uri, $method, $data, $wildcard_data = false) {
         $endpoint_procedure = @$endpoint["_$method"];
         if (!isset($endpoint_procedure) || !is_callable($endpoint_procedure))
             // respond to unimplemented HTTP method request
-            return [ HTTP_METHOD_NOT_ALLOWED, "Resource cannot be accessed with $method" ];
+            return [ HTTP_METHOD_NOT_ALLOWED, "Endpoint cannot be accessed with $method" ];
         // run API procedure with HTTP data and current endpoint data, and respond with returned data
         return $endpoint_procedure($data, $endpoint['__this']);
     }
@@ -161,7 +161,7 @@ function rest($endpoint, $uri, $method, $data, $wildcard_data = false) {
             $next_endpoint = @$endpoint['*'];
             if (!isset($next_endpoint) || !is_array($next_endpoint))
                 // respond to lack of next endpoint/wildcard endpoint
-                return [ HTTP_NOT_FOUND, 'Resource not found' ];
+                return [ HTTP_NOT_FOUND, 'Endpoint not found' ];
             // set wildcard data to URI element
             else $wildcard_data = $uri[0];
         }
