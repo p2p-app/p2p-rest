@@ -56,7 +56,7 @@ $api['students'] = [
                     'id' => $new_student_id,
                     'username' => $username,
                     'fullname' => $fullname,
-                    'profile' => 'null',
+                    'profile' => null,
                     'type' => 'student'
                 ]
             ] ];
@@ -86,7 +86,7 @@ $api['students'] = [
         // [GET] get student data by id
         '_GET' => function ($get, $wildcardEP) use (&$api, $db) {
             $student = $wildcardEP['student'];
-            $profile = 'null';
+            $profile = null;
             if (profilePicture($student['id']))
                 $profile = "/images/{$student['id']}";
             // respond with student data

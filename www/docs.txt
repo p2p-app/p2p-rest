@@ -131,7 +131,7 @@ api
                     ],
                     profile,
                     type=tutor,
-                    &reviews: (if reviewData=true)[
+                    &reviews: (if reviewData==true)[
                         review1(review_object),
                         review2(review_object),
                         ...
@@ -248,6 +248,7 @@ api
                         or "confirmed"
                         or "commenced"
                         or "completed"
+                        or "cancelled"
                 }
             location
                 POST AUTH (only student from session)

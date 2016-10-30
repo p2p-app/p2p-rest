@@ -65,6 +65,9 @@ $api['tutors'] = [
             $tutorSubjects = explode(',', $tutor['subjects']);
             foreach ($tutorSubjects as $k => $tutorSubject) {
                 if ($subjects[0] == 'all' || in_array($tutorSubject, $subjects)) {
+                    $profile = null;
+                    if (profilePicture($tutor['id']))
+                        $profile = "/images/{$tutor['id']}";
                     array_push($modTutors, [
                         'id' => $tutor['id'],
                         'username' => $tutor['username'],
@@ -73,13 +76,13 @@ $api['tutors'] = [
                         'bio' => $tutor['bio'],
                         'subjects' => $tutor['subjects'],
                         'city' => $tutor['city'],
-                        'stars' => ($tutor['stars'] > 5 ? 'null' : $tutor['stars']),
+                        'stars' => ($tutor['stars'] > 5 ? null : $tutor['stars']),
                         'hours' => $tutor['hours'],
                         'location' => [
-                            (isset($tutor['latitude']) ? $tutor['latitude'] : 'null'),
-                            (isset($tutor['longitude']) ? $tutor['longitude'] : 'null')
+                            (isset($tutor['latitude']) ? $tutor['latitude'] : null),
+                            (isset($tutor['longitude']) ? $tutor['longitude'] : null)
                         ],
-                        'profile' => $tutor['profile'],
+                        'profile' => $profile,
                         'type' => 'tutor'
                     ]);
                     break;
@@ -178,11 +181,11 @@ $api['tutors'] = [
                     'school' => $school,
                     'bio' => $bio,
                     'subjects' => $subjects,
-                    'stars' => 'null',
+                    'stars' => null,
                     'hours' => 0,
                     'city' => $city,
-                    'location' => [ 'null', 'null' ],
-                    'profile' => 'null',
+                    'location' => [ null, null ],
+                    'profile' => null,
                     'type' => 'tutor'
                 ]
             ] ];
@@ -211,7 +214,7 @@ $api['tutors'] = [
         // [GET] get tutor data by id
         '_GET' => function ($get, $wildcardEP) use (&$api, $db) {
             $tutor = $wildcardEP['tutor'];
-            $profile = 'null';
+            $profile = null;
             if (profilePicture($tutor['id']))
                 $profile = "/images/{$tutor['id']}";
             $data = [
@@ -221,12 +224,12 @@ $api['tutors'] = [
                 'school' => $tutor['school'],
                 'bio' => $tutor['bio'],
                 'subjects' => $tutor['subjects'],
-                'city' => (!isset($tutor['city']) ? 'null' : $tutor['city']),
-                'stars' => ($tutor['stars'] > 5 ? 'null' : $tutor['stars']),
+                'city' => (!isset($tutor['city']) ? null : $tutor['city']),
+                'stars' => ($tutor['stars'] > 5 ? null : $tutor['stars']),
                 'hours' => $tutor['hours'],
                 'location' => [
-                    (isset($tutor['latitude']) && !(floatval($tutor['latitude']) > 199) ? floatval($tutor['latitude']) : 'null'),
-                    (isset($tutor['longitude']) && !(floatval($tutor['longitude']) > 199) ? floatval($tutor['longitude']) : 'null')
+                    (isset($tutor['latitude']) && !(floatval($tutor['latitude']) > 199) ? floatval($tutor['latitude']) : null),
+                    (isset($tutor['longitude']) && !(floatval($tutor['longitude']) > 199) ? floatval($tutor['longitude']) : null)
                 ],
                 'profile' => $profile,
                 'type' => 'tutor'
@@ -299,7 +302,7 @@ $api['tutors'] = [
                     if ($totalreviews === false)
                         return [ HTTP_INTERNAL_SERVER_ERROR, 'Error while calculating average of stars' ];
                     if ($totalreviews > 0) {
-                        if ($oldstars === 'null' || (is_numeric($oldstars) && floatval($oldstars) > 5)) {
+                        if ($oldstars === 'null' || $oldstars == null || (is_numeric($oldstars) && floatval($oldstars) > 5)) {
                             foreach ($totalreviews as $i => $pastreview) {
                                 if (is_array($pastreview) && isset($pastreview['stars']) && is_numeric($pastreview['stars']))
                                     $stars += floatval($pastreview['stars']);
@@ -439,20 +442,23 @@ $api['tutors'] = [
                 $lat = @$_POST['lat'];
                 if (!isset($lat) || !is_string($lat) || (strtolower($lat) != 'null' && (!is_numeric($lat) || (floatval($lat) > 90) || (floatval($lat) < -90))))
                     return [ HTTP_INTERNAL_SERVER_ERROR, 'Invalid parameter: lat' ];
-                $lat = strtolower($lat);
+                if ($lat == null || strtolower($lat) == 'null') $lat = null;
+                else $lat = floatval($lat);
                 $long = @$_POST['long'];
                 if (!isset($long) || !is_string($long) || (strtolower($long) != 'null' && (!is_numeric($long) || (floatval($long) > 180) || (floatval($long) < -180))))
                     return [ HTTP_INTERNAL_SERVER_ERROR, 'Invalid Parameter: long' ];
                 $long = strtolower($long);
+                if ($long == null || strtolower($long) == 'null') $long = null;
+                else $long = floatval($long);
 
                 // set location in database
                 if ($db->set('tutors', $tutor_id, [
                     'latitude' => [
-                        'val' => ($lat == 'null') ? 200 : $lat,
+                        'val' => ($lat == 'null' || $lat == null) ? 200 : $lat,
                         'type' => 'double'
                     ],
                     'longitude' => [
-                        'val' => ($long == 'null') ? 200 : $long,
+                        'val' => ($long == 'null' || $long == null) ? 200 : $long,
                         'type' => 'double'
                     ],
                 ]) === false)
@@ -470,8 +476,8 @@ $api['tutors'] = [
                 $long = @$locationEP['__parent']['tutor']['longitude'];
                 if (!isset($lat) || !isset($long))
                     return [ HTTP_INTERNAL_SERVER_ERROR, 'Error while retrieving location' ];
-                $lat = (is_string($lat) && strtolower($lat) === 'null') || floatval($lat) > 199 ? 'null' : floatval($lat);
-                $long = (is_string($long) && strtolower($long) === 'null') || floatval($long) > 199 ? 'null' : floatval($long);
+                $lat = (is_string($lat) && strtolower($lat) === 'null') || floatval($lat) > 199 || $lat == null ? null : floatval($lat);
+                $long = (is_string($long) && strtolower($long) === 'null') || floatval($long) > 199 || $long == null ? null : floatval($long);
 
                 // send back data
                 return [ true, [

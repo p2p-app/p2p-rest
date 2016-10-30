@@ -25,17 +25,26 @@ $api['sessions'] = [
         // validate data
         $tutorData = @$get['tutorData'] == true || @$get['tutorData'] === 'true';
         $studentData = @$get['studentData'] == true || @$get['studentData'] === 'true';
+        $state = @$get['state'];
         // get sessions of user
-        $sessions = $db->get('sessions', [
-            $sessionsEP['type'] => $sessionsEP['token']['id']
-        ]);
+        $sessions = null;
+        if (!isset($state)) {
+            $sessions = $db->get('sessions', [
+                $sessionsEP['type'] => $sessionsEP['token']['id']
+            ]);
+        } elseif (in_array($state, [ 'pending', 'confirmed', 'commenced', 'completed', 'cancelled' ])) {
+            $sessions = $db->get('sessions', [
+                $sessionsEP['type'] => $sessionsEP['token']['id'],
+                'state' => $state
+            ]);
+        } else return [ HTTP_BAD_REQUEST, 'Invalid parameter: state' ];
         if ($sessions === false)
             return [ HTTP_INTERNAL_SERVER_ERROR, 'Error while retrieving sessions' ];
         // reorganize sessions
         $data = null;
         if ($sessions == null)
             $data = [ ];
-        if (isAssoc($sessions))
+        elseif (isAssoc($sessions))
             $data = [ $sessions ];
         else $data = $sessions;
         foreach ($data as $i => $session) {
@@ -153,10 +162,10 @@ $api['sessions'] = [
             $session = $wildcardEP['session'];
             // check data existence
             $lat = @$session['latitude'];
-            if (!isset($lat) || floatval($lat) > 180) $lat = 'null';
+            if (!isset($lat) || floatval($lat) > 180) $lat = null;
             else $lat = floatval($lat);
             $long = @$session['longitude'];
-            if (!isset($long) || floatval($long) > 180) $long = 'null';
+            if (!isset($long) || floatval($long) > 180) $long = null;
             else $long = floatval($long);
 
             // get tutor if desired
@@ -195,20 +204,22 @@ $api['sessions'] = [
                 $lat = @$post['lat'];
                 if (!isset($lat) || !is_string($lat) || (strtolower($lat) != 'null' && (!is_numeric($lat) || (floatval($lat) > 90) || (floatval($lat) < -90))))
                     return [ HTTP_BAD_REQUEST, 'Invalid parameter: lat' ];
-                $lat = strtolower($lat);
+                if ($lat == null || strtolower($lat) == 'null') $lat = null;
+                else $lat = floatval($lat);
                 $long = @$post['long'];
                 if (!isset($long) || !is_string($long) || (strtolower($long) != 'null' && (!is_numeric($long) || (floatval($long) > 180) || (floatval($long) < -180))))
                     return [ HTTP_BAD_REQUEST, 'Invalid parameter: long' ];
-                $long = strtolower($long);
+                if ($long == null || strtolower($long) == 'null') $long = null;
+                else $long = floatval($long);
 
                 // update location in sessions table
                 if ($db->set('sessions', $session['id'], [
                     'latitude' => [
-                        'val' => ($lat == 'null') ? 200 : $lat,
+                        'val' => ($lat == null) ? 200 : $lat,
                         'type' => 'double'
                     ],
                     'longitude' => [
-                        'val' => ($long == 'null') ? 200 : $long,
+                        'val' => ($long == null) ? 200 : $long,
                         'type' => 'double'
                     ],
                 ]) === false)
@@ -227,8 +238,8 @@ $api['sessions'] = [
                 $long = @$session['longitude'];
                 if (!isset($lat) || !isset($long) || (is_string($lat) && strtolower($lat) == 'null') || (is_string($long) && strtolower($long) == 'null'))
                     emit(500, [ 'message' => 'Student has not shared location' ]);
-                $lat = (floatval($lat) > 199) ? 'null' : floatval($lat);
-                $long = (floatval($long) > 199) ? 'null' : floatval($long);
+                $lat = (floatval($lat) > 199) ? null : floatval($lat);
+                $long = (floatval($long) > 199) ? null : floatval($long);
 
                 // send location data
                 return [ true, [
