@@ -112,7 +112,9 @@ api
                 }
 		:tutor_id
 			GET AUTH
-    			Body: (null)
+    			Body: {
+                    &reviewData=false
+                }
                 Returns: (tutor_object){
                     id,
                     username,
@@ -128,7 +130,12 @@ api
                         long(float/null)
                     ],
                     profile,
-                    type=tutor
+                    type=tutor,
+                    &reviews: (if reviewData=true)[
+                        review1(review_object),
+                        review2(review_object),
+                        ...
+                    ]
                 }
     		reviews
     			GET AUTH

@@ -214,8 +214,7 @@ $api['tutors'] = [
             $profile = 'null';
             if (profilePicture($tutor['id']))
                 $profile = "/images/{$tutor['id']}";
-            // respond with tutor data
-            return [ true, [
+            $data = [
                 'id' => $tutor['id'],
                 'username' => $tutor['username'],
                 'fullname' => $tutor['fullname'],
@@ -231,7 +230,15 @@ $api['tutors'] = [
                 ],
                 'profile' => $profile,
                 'type' => 'tutor'
-            ] ];
+            ];
+            if (@$get['reviewData'] == true || @$get['reviewData'] === 'true') {
+                $reviews = rest($api, 'tutors/' . $tutor['id'] . '/reviews', 'get', [ ]);
+                if ($reviews[0] === true)
+                    $data['reviews'] = $reviews[1];
+                else return $reviews;
+            }
+            // respond with tutor data
+            return [ true, $data ];
         },
         // reviews - manage tutor reviews
         'reviews' => [
