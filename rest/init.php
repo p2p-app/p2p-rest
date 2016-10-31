@@ -49,10 +49,10 @@ function isAssoc($array) {
 }
 
 // checks if profile picture exists
-$images_dir = "$base_path/uploads/images";
-function profilePicture($userID) {
+$images_dir = "./../../uploads/images";
+function profilePicture($user_id) {
     global $images_dir;
-    return file_exists("$images_dir/$userID.png");
+    return file_exists("$images_dir/$user_id.png");
 }
 
 // validates/verifies JWT token and extractes payload
@@ -105,14 +105,20 @@ function authenticate() {
         $token = substr($token, 6);
     // validate/verify token
     $payload = decodeToken($token);
-    if ($payload === false || $payload == null)
+    if ($payload === false || $payload == null) {
+        var_dump('hi');
+        debug_print_backtrace();
+        die();
         emit(HTTP_UNAUTHORIZED, 'Invalid Authorization Token');
+    }
     // check if username and id form payload match database
+    $type = 'student';
     $validStudent = $db->get('students', [
         'id' => $payload['id'],
         'username' => $payload['username']
     ], [ 'id' ]);
     if ($validStudent === false) {
+        $type = 'tutor';
         $validTutor = $db->get('tutors', [
             'id' => $payload['id'],
             'username' => $payload['username']
@@ -123,7 +129,8 @@ function authenticate() {
     // return payload on success
     return [
         'id' => $payload['id'],
-        'username' => $payload['username']
+        'username' => $payload['username'],
+        'type' => $type
     ];
 }
 

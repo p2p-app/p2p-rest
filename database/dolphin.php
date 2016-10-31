@@ -243,8 +243,9 @@ class Dolphin {
             $result = $sql->get_result();
             $num_rows = $result->num_rows;
             if ($num_rows == 1) {
-                if ($nullData) $response = $result->fetch_assoc();
-                elseif (count($data) == 1) $response = $result->fetch_assoc()[$data[0]];
+                $result_assoc = $result->fetch_assoc();
+                if (count($data) == 1) $response = $result_assoc[$data[0]];
+                else $response = $result_assoc;
             } else {
                 if (!$nullData && count($data) == 1) {
                     while (($row = $result->fetch_assoc()) !== null)
