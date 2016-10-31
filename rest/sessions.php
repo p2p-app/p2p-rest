@@ -23,8 +23,8 @@ $api['sessions'] = [
     // [GET] get authenticated user's sessions
     '_GET' => function ($get, $sessionsEP) use (&$api, $db) {
         // validate data
-        $tutorData = @$get['tutorData'] == true || @$get['tutorData'] === 'true';
-        $studentData = @$get['studentData'] == true || @$get['studentData'] === 'true';
+        $tutorData = @$get['tutorData'] === true || @$get['tutorData'] === 'true' || @$get['tutorData'] === '1';
+        $studentData = @$get['studentData'] === true || @$get['studentData'] === 'true' || @$get['studentData'] === '1';
         $state = @$get['state'];
         // get sessions of user
         $sessions = null;
@@ -170,7 +170,7 @@ $api['sessions'] = [
 
             // get tutor if desired
             $tutor = null;
-            if (@$get['tutorData'] === true || @$get['tutorData'] === 'true') {
+            if (@$get['tutorData'] === true || @$get['tutorData'] === 'true' || @$get['tutorData'] === '1') {
                 $tutor = rest($api, 'tutors/' . $session['tutor'], 'get', [ ]);
                 if ($tutor[0] == true)
                     $tutor = $tutor[1];
@@ -178,7 +178,7 @@ $api['sessions'] = [
             }
             // get student if desired
             $student = null;
-            if (@$get['studentData'] === true || @$get['studentData'] === 'true') {
+            if (@$get['studentData'] === true || @$get['studentData'] === 'true' || @$get['studentData'] === '1') {
                 $student = rest($api, 'students/' . $session['student'], 'get', [ ]);
                 if ($student[0] == true)
                     $student = $student[1];
