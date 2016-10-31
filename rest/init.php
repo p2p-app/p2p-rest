@@ -49,9 +49,10 @@ function isAssoc($array) {
 }
 
 // checks if profile picture exists
+$images_dir = "$base_path/uploads/images";
 function profilePicture($userID) {
-    global $base_path;
-    return file_exists("$base_path/uploads/profile_pics/$userID.png");
+    global $images_dir;
+    return file_exists("$images_dir/$userID.png");
 }
 
 // validates/verifies JWT token and extractes payload

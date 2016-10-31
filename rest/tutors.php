@@ -276,7 +276,9 @@ $api['tutors'] = [
                     $tutor = $createEP['__parent']['__parent']['tutor'];
                     // check data validity
                     $from = @$post['from'];
-                    if (!isset($from) || !is_string($from) || !ctype_alnum($from))
+                    if (!isset($from))
+                        $from = $createEP['__parent']['__parent']['token']['id'];
+                    elseif (!is_string($from) || !ctype_alnum($from))
                         return [ HTTP_BAD_REQUEST, 'Invalid Parameter: from' ];
                     $stars = @$post['stars'];
                     if (!isset($stars) || !is_numeric($stars) || floatval($stars) > 5 || floatval($stars) < 0)

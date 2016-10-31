@@ -148,7 +148,6 @@ api
     			create
     				POST AUTH
                         Body: {
-                            from(student_id, alphanumeric),
                             stars(float),
                             text
                         }

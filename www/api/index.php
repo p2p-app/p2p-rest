@@ -17,7 +17,8 @@ $api_endpoint_files = [
     'auth.php', // authentication endpoint
     'students.php', // students endpoint
     'tutors.php', // tutors endpoint
-    'sessions.php' // sessions endpoint
+    'sessions.php', // sessions endpoint
+    'images.php' // images endpoint
 ];
 foreach ($api_endpoint_files as $f => $file)
     require("$base_path/rest/$file");

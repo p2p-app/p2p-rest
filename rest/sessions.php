@@ -272,7 +272,7 @@ $api['sessions'] = [
                 } elseif (@$action == 'commence') {
                     // only students can commence
                     // check user authenticity (if user ID in token matches session student ID)
-                    if ($session['student'] != $token['id'])
+                    if ($session['tutor'] != $token['id'])
                         return [ HTTP_FORBIDDEN, 'Authenticated user is not authorized to commence this session' ];
                     if (@$session['state'] != 'confirmed')
                         return [ HTTP_BAD_REQUEST, 'Session is not in "confirmed" state and cannot be commenced' ];
@@ -280,7 +280,7 @@ $api['sessions'] = [
                 } elseif (@$action == 'complete') {
                     // only tutors can complete
                     // check user authenticity (if user ID in token matches session student ID)
-                    if ($session['student'] != $token['id'])
+                    if ($session['tutor'] != $token['id'])
                         return [ HTTP_FORBIDDEN, 'Authenticated user is not authorized to complete this session' ];
                     if (@$session['state'] != 'commenced')
                         return [ HTTP_BAD_REQUEST, 'Session is not in "commenced" state and cannot be completed' ];

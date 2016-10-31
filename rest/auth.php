@@ -58,7 +58,7 @@ $api['auth'] = [
         }
 
         // fail if username or password not found in either table
-        if ($user == null) return [ HTTP_NOT_FOUND, 'User not found' ];
+        if ($user == null) return [ HTTP_UNAUTHORIZED, 'Invalid Credentials' ];
 
         // get full user data
         $old_auth = @$_SERVER['HTTP_AUTHORIZATION'];
