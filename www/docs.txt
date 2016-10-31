@@ -72,9 +72,9 @@ api
                 lat(float),
                 long(float),
                 subjects(CSV),
-                &latrange(float)=0.0001,
-                &longrange(float)=0.0001,
-                &range(float)=0.0001
+                &latrange(float)=null,
+                &longrange(float)=null,
+                &range(float)=25
             }
     		Returns: [
                 tutor1(tutor_object),
@@ -106,6 +106,7 @@ api
         					lat(float/null),
                             long(float/null)
         				],
+                        distance,
                         profile=null,
                         type=tutor
         			}
@@ -282,3 +283,19 @@ api
                             or "completed"
                             or "cancelled"
                     }
+    images
+        upload
+            POST AUTH
+                Body: {
+                    profile(image/png)
+                }
+                Returns: {
+                    message,
+                    image(URI)
+                }
+        :user_id
+            GET
+                Body: null
+                Returns: {
+                    image(image/png)
+                }

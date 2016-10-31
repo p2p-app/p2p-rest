@@ -262,9 +262,14 @@ class Dolphin {
             // loop through desired data
             $where = '';
             $types = '';
+            $whereKeyword = 'WHERE';
             $expectedValues = [];
             $lastNextOpLength = 0;
             foreach ($child as $attribute => $value) {
+                if ($attribute === 'where') {
+                    $whereKeyword = $value;
+                    continue;
+                }
                 if (!is_string($attribute))
                     $attribute = $value['attribute'];
                 if (is_array($value)) {
@@ -320,9 +325,9 @@ class Dolphin {
             }
             $where = substr($where, 0, strlen($where) - $lastNextOpLength);
             // if data not provided, get all child data
-            if ($nullData) $query = "SELECT * FROM `$table` WHERE $where";
+            if ($nullData) $query = "SELECT * FROM `$table` $whereKeyword $where";
             // if data provided, get specified data
-            else $query = "SELECT " . implode(',', $data) . " FROM `$table` WHERE $where";
+            else $query = "SELECT " . implode(',', $data) . " FROM `$table` $whereKeyword $where";
 
             $bind_params = array_merge([$types], $expectedValues);
 

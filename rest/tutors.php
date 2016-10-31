@@ -23,33 +23,55 @@ $api['tutors'] = [
         $long = floatval($long);
         $range = @$get['range'];
         if (!isset($range) || !is_string($range) || !is_numeric($range))
-            $range = 0.0001;
+            $range = 25;
         $range = floatval($range);
         $latrange = @$get['latrange'];
         if (!isset($latrange) || !is_string($latrange) || !is_numeric($latrange))
-            $latrange = $range;
-        $latrange = floatval($latrange);
+            $latrange = null;
+        else $latrange = floatval($latrange);
         $longrange = @$get['longrange'];
         if (!isset($longrange) || !is_string($longrange) || !is_numeric($longrange))
-            $longrange = $range;
-        $longrange = floatval($longrange);
+            $longrange = null;
+        else $longrange = floatval($longrange);
         $subjects = @$get['subjects'];
         if (!isset($subjects) || !is_string($subjects) || strlen($subjects) > 200)
             return [ HTTP_BAD_REQUEST, 'Invalid Parameter: subjects' ];
         $subjects = explode(',', strtolower($subjects));
 
         // get tutors with DB condition of lat/long
-        $tutors = $db->get('tutors', [
-            'latitude' => [
-                'condition' => 'between ? and ?',
-                'expected' => [ $lat - $latrange, $lat + $latrange ],
-                'nextOperator' => 'AND'
-            ],
-            'longitude' => [
-                'condition' => 'between ? and ?',
-                'expected' => [ $long - $longrange, $long + $longrange ],
-            ]
-        ]);
+        if ($latrange == null || $longrange == null) {
+            $earthRadius = '3959';
+            $condition = "$earthRadius * " .
+                'acos(' .
+                    "cos(radians($lat)) * " .
+                    'cos(radians(`latitude`)) * ' .
+                    'cos(' .
+                        "radians(`longitude`) - radians($long)" .
+                    ') + ' .
+                    "sin(radians($lat)) * " .
+                    'sin(radians(`latitude`))' .
+                ')'
+            ;
+            $tutors = $db->get('tutors', [
+                'where' => 'HAVING',
+                'distance' => [
+                    'condition' => '< ? ORDER BY `distance`',
+                    'expected' => [ $range ]
+                ]
+            ], [ '*', "($condition) AS `distance`" ]);
+        } else {
+            $tutors = $db->get('tutors', [
+                'latitude' => [
+                    'condition' => 'between ? and ?',
+                    'expected' => [ $lat - $latrange, $lat + $latrange ],
+                    'nextOperator' => 'AND'
+                ],
+                'longitude' => [
+                    'condition' => 'between ? and ?',
+                    'expected' => [ $long - $longrange, $long + $longrange ],
+                ]
+            ]);
+        }
 
         // correct returned array
         if ($tutors === false)
@@ -82,6 +104,7 @@ $api['tutors'] = [
                             (isset($tutor['latitude']) ? $tutor['latitude'] : null),
                             (isset($tutor['longitude']) ? $tutor['longitude'] : null)
                         ],
+                        'distance' => $tutor['distance'],
                         'profile' => $profile,
                         'type' => 'tutor'
                     ]);
@@ -297,6 +320,7 @@ $api['tutors'] = [
                         return [ HTTP_NOT_FOUND, 'Student with "from" ID not found' ];
 
                     // average stars
+                    $newstars = $stars;
                     $oldstars = $tutor['stars'];
                     $totalreviews = $db->get('reviews', [
                         'forTutor' => $tutor['id']
@@ -307,15 +331,15 @@ $api['tutors'] = [
                         if ($oldstars === 'null' || $oldstars == null || (is_numeric($oldstars) && floatval($oldstars) > 5)) {
                             foreach ($totalreviews as $i => $pastreview) {
                                 if (is_array($pastreview) && isset($pastreview['stars']) && is_numeric($pastreview['stars']))
-                                    $stars += floatval($pastreview['stars']);
+                                    $newstars += floatval($pastreview['stars']);
                                 elseif (is_numeric($pastreview))
-                                    $stars += floatval($pastreview);
+                                    $newstars += floatval($pastreview);
                             }
-                        } else $stars += floatval($oldstars) * count($totalreviews);
-                        $stars /= count($totalreviews) + 1;
+                        } else $newstars += floatval($oldstars) * count($totalreviews);
+                        $newstars /= count($totalreviews) + 1;
                     }
                     $averaged = $db->set('tutors', $tutor['id'], [
-                        'stars' => $stars
+                        'stars' => $newstars
                     ]);
                     if ($averaged === false)
                         return [ HTTP_INTERNAL_SERVER_ERROR, 'Error while updating average of stars' ];

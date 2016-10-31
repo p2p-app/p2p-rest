@@ -105,12 +105,8 @@ function authenticate() {
         $token = substr($token, 6);
     // validate/verify token
     $payload = decodeToken($token);
-    if ($payload === false || $payload == null) {
-        var_dump('hi');
-        debug_print_backtrace();
-        die();
+    if ($payload === false || $payload == null)
         emit(HTTP_UNAUTHORIZED, 'Invalid Authorization Token');
-    }
     // check if username and id form payload match database
     $type = 'student';
     $validStudent = $db->get('students', [
