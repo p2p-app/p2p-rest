@@ -104,7 +104,7 @@ $api['tutors'] = [
                             (isset($tutor['latitude']) ? $tutor['latitude'] : null),
                             (isset($tutor['longitude']) ? $tutor['longitude'] : null)
                         ],
-                        'distance' => $tutor['distance'],
+                        'distance' => @$tutor['distance'],
                         'profile' => $profile,
                         'type' => 'tutor'
                     ]);
