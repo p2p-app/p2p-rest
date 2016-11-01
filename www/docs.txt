@@ -3,11 +3,12 @@ NOTES/LEGEND
     - &parameter means parameter is optional
         - &parameter=default means parameter is optional and defaults to specified default
     - parameter(format) means parameter has specific type or format besides string
-    - On error, all requests to `api/*` return this object:
+    - On error, all requests to `api/*` return an error code and this object:
         {
             "message": "Some message about the error type"
-            "uri": "api/:some_path"
+            "uri": ":some_path"
         }
+      Where the message specifies the nature of the error and the URI is the path accessed (`:host/api/:some_path` - :host is usually http://p2p.anuv.me)
 
 REST API ENDPOINTS
 api
