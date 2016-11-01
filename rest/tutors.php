@@ -37,6 +37,8 @@ $api['tutors'] = [
         if (!isset($subjects) || !is_string($subjects) || strlen($subjects) > 200)
             return [ HTTP_BAD_REQUEST, 'Invalid Parameter: subjects' ];
         $subjects = explode(',', strtolower($subjects));
+        foreach ($subjects as $i => $subject)
+            $subjects[$i] = trim($subject);
 
         // get tutors with DB condition of lat/long
         if ($latrange == null || $longrange == null) {
@@ -140,7 +142,10 @@ $api['tutors'] = [
             $subjects = @$post['subjects'];
             if (!isset($subjects) || !is_string($subjects) || !ctype_alnum(str_replace([ ' ', '-', '.', ',', '(', ')' ], '', $subjects)))
                 return [ HTTP_BAD_REQUEST, 'Invalid Subjects' ];
-            $subjects = strtolower($subjects);
+            $subjects = explode(',', strtolower($subjects));
+            foreach ($subjects as $i => $subject)
+                $subjects[$i] = trim($subject);
+            $subjects = implode(',', $subjects);
             $city = @$post['city'];
             if (!isset($city) || !is_string($city) || !ctype_alnum(str_replace([ ' ', '-', '.', ',' ], '', $city)))
                 return [ HTTP_BAD_REQUEST, 'Invalid City' ];
