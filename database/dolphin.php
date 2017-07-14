@@ -2,7 +2,7 @@
 
 /*
   dolphin v1.0
-  Copyright: (c) 2016 Anuv Gupta
+  Copyright: (c) 2017 Anuv Gupta
   File: dolphin.php (dolphin master)
   Source: [https://github.com/anuvgupta/dolphin]
   License: MIT [https://github.com/anuvgupta/dolphin/blob/master/LICENSE.md]

@@ -6,3 +6,6 @@
 
 # composer
 vendor
+
+# mysql
+p2p.sql
